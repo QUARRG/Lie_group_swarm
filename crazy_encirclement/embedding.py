@@ -122,6 +122,9 @@ class Embedding():
         elif self.tactic == 'bernoulli':
             a = -(np.sqrt(2)*np.sqrt(np.cos(phi) + 1))/(2*np.sqrt(np.sin(phi)**2 + 1))
             b = -(np.sqrt(2)*np.sqrt(1-np.cos(phi)))/(2*np.sqrt(np.sin(phi)**2 + 1))
+            norm = np.sqrt(a**2 + b**2)
+            a = a / norm
+            b = b / norm
         return np.quaternion(a, b, 0, 0)
 
     # Quaternion multiplication function (can be skipped if using numpy.quaternion)

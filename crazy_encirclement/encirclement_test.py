@@ -1,4 +1,4 @@
-from embedding_so3 import Embedding
+from embedding import Embedding
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -6,7 +6,7 @@ import math
 from scipy.spatial.transform import Rotation as R
 from utils import generate_reference
 
-N = 5000
+N = 3000
 r = 0.5
 k_phi = 5
 kx = 10
@@ -39,7 +39,7 @@ agents_r[:, 1, 0] = np.array([-0.5,-0.05,0.5]).T
 agents_r[:, 2, 0] = np.array([0.36,0.17 ,1]).T
 
 
-embedding = Embedding(r, phi_dot,k_phi, 'dumbbell',n_agents,dt)
+embedding = Embedding(r, phi_dot,k_phi, 'bernoulli',n_agents,dt)
 
 
 # for i in range(10):
@@ -57,6 +57,7 @@ embedding = Embedding(r, phi_dot,k_phi, 'dumbbell',n_agents,dt)
 # phi_cur[:,0] = phi_new
 
 for i in range(N-1):
+    print("percentage: ", float(i/N))
     # Wr_r_new, f_T_r_new, angles_new,_, Ca_r_new = generate_reference(va_r_dot[:,:,i],Ca_r[:,:,:,i],Ca_b[:,:,:,i],va_r[:,:,i],dt)
     # Ca_r[:,:,:,i+1] = Ca_r_new
     # f_T_r[:,i] = f_T_r_new
@@ -67,7 +68,7 @@ for i in range(N-1):
     agents_v[:,:,i+1] = agents_v[:,:,i] + accels[:,:,i]*dt
     agents_r[:,:,i+1] = agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2
 
-    phi_new, target_r_new, target_v_new, _,phi_diff_new, distances_new = embedding.targets(agents_r[:,:,i], agents_v[:,:,i],phi_cur[:,i])
+    phi_new, target_r_new, target_v_new, _,_,phi_diff_new, distances_new = embedding.targets(agents_r[:,:,i], agents_v[:,:,i],phi_cur[:,i])
     phi_cur[:,i+1] = phi_new
     ra_r[:,:,i+1] = target_r_new
     va_r[:,:,i+1] = target_v_new

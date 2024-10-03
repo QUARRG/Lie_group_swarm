@@ -20,7 +20,7 @@ class Encirclement(Node):
         self.get_logger().info('Encirclement node has been started.')
         self.declare_parameter('r', '1')
         self.declare_parameter('k_phi', '5')
-        self.declare_parameter('robot_data', ['C103', 'C104', 'C105'])
+        self.declare_parameter('robot_data', ['C101', 'C103', 'C110','C118'])
         self.declare_parameter('phi_dot', '0.1')
         self.declare_parameter('tactic', 'circle')    
 
@@ -31,32 +31,14 @@ class Encirclement(Node):
         self.phi_dot  = float(self.get_parameter('phi_dot').value)
         self.tactic  = self.get_parameter('tactic').value
         self.order = None
-        self.initial_pose = None
-        self.initial_phase = {}
+        self.initial_pose = np.zeros((3,self.n_agents))
+        self.initial_phases = {}
         self.final_pose = None
         self.has_taken_off = False
         self.has_hovered = False
         self.has_landed = False
         self.land_flag = False
-
-        while bool(self.initial_phase) == False:
-            rclpy.spin_once(self, timeout_sec=0.1)
-        self.get_logger().info("First pose received. Moving on...")
-
-        self.my_publishers = []
-        for robot in self.order:
-            self.my_publishers.append(self.create_publisher(FullState,'/'+ robot + '/cmd_full_state', 10))
-        
- 
-        qos_profile = QoSProfile(reliability =QoSReliabilityPolicy.BEST_EFFORT,
-            history=QoSHistoryPolicy.KEEP_LAST,
-            depth=1,
-            deadline=Duration(seconds=0, nanoseconds=0))
-
-        self.create_subscription(
-            NamedPoseArray, "/poses",
-            self._poses_changed, qos_profile
-        )
+        self.hover_height = 0.3
 
         #for robot in self.robots:
         self.create_subscription(
@@ -64,15 +46,36 @@ class Encirclement(Node):
             'landing',
             self._landing_callback,
             10)
+        qos_profile = QoSProfile(reliability =QoSReliabilityPolicy.BEST_EFFORT,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=1,
+            deadline=Duration(seconds=0, nanoseconds=0))
+        self.create_subscription(
+            NamedPoseArray, "/poses",
+            self._poses_changed, qos_profile
+        )
+        while self.order == None:
+            rclpy.spin_once(self, timeout_sec=0.1)
+        while self.initial_pose.all() == 0:
+            rclpy.spin_once(self, timeout_sec=0.1)
         
+        self.get_logger().info(f"Initial pose: {self.initial_pose}")
+        self.get_logger().info("First pose received. Moving on...")
+        self.get_logger().info(f"Order: {self.order}")
+
+        self.my_publishers = []
+        for robot in self.order:
+            self.my_publishers.append(self.create_publisher(FullState,'/'+ robot + '/cmd_full_state', 10))
+
         #initiating some variables
         self.target_v_new = np.zeros((3,self.n_agents))
         self.Ca_r = np.zeros((3,3,self.n_agents))
         self.Ca_b = np.zeros((3,3,self.n_agents))
         self.agents_r = np.zeros((3, self.n_agents))
         self.phi_cur = np.zeros(self.n_agents)
-        self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents)
         self.timer_period = 0.1
+        self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents,self.timer_period)
+        
 
         self.takeoff_traj(5)
         self.landing_traj(3)
@@ -131,14 +134,13 @@ class Encirclement(Node):
            to the crazyflie 
         """
 
-        if bool(self.initial_phase) == False:
+        if bool(self.initial_phases) == False:
             for pose in msg.poses:
                 if pose.name in self.robots:
-                    self.initial_phase[str(pose.name)] = np.arctan2(pose.pose.position.y, pose.pose.position.x)
+                    self.initial_phases[str(pose.name)] = np.mod(np.arctan2(pose.pose.position.y, pose.pose.position.x),2*np.pi)
             
-            self.order = sorted(self.initial_phases, key=lambda x: self.initial_phase[x])
-        elif self.initial_pose == None:
-            self.initial_pose = np.zeros((3,self.n_agents))
+            self.order = sorted(self.initial_phases, key=lambda x: self.initial_phases[x],reverse=True)
+        elif self.initial_pose.all() == 0:
             for pose in msg.poses:
                 if pose.name in self.robots:
                     self.initial_pose[0,self.order.index(pose.name)] = pose.pose.position.x
@@ -178,30 +180,30 @@ class Encirclement(Node):
         #takeoff trajectory
         self.t_takeoff = np.arange(0,t_max,self.timer_period)
         #self.t_takeoff = np.tile(t_takeoff[:,np.newaxis],(1,self.n_agents))
-        self.r_takeoff = np.zeros((3,len(self.t_takeoff,self.n_agents))) 
-        self.r_takeoff[0,:] += self.initial_pose.position.x
-        self.r_takeoff[1,:] += self.initial_pose.position.y
-        self.r_takeoff[2,:] = self.hover_height*(self.t_takeoff/self.t_max) #+ self.initial_pose.position.z
+        self.r_takeoff = np.zeros((3,len(self.t_takeoff),self.n_agents)) 
+        self.r_takeoff[0,:] += self.initial_pose[0,:]
+        self.r_takeoff[1,:] += self.initial_pose[1,:]
+        self.r_takeoff[2,:] = self.hover_height*(self.t_takeoff/t_max) #+ self.initial_pose.position.z
         v,_ = self.trajectory(self.r_takeoff)
         self.r_dot_takeoff = v
     def landing_traj(self,t_max):
         #landing trajectory
         self.t_landing = np.arange(t_max,1,-self.timer_period)
         self.i_landing = 0
-        self.r_landing = np.zeros((3,len(self.t_landing)))
-        self.r_landing[2,:] = self.hover_height*(self.t_landing/self.t_max) #+ self.initial_pose.position.z
+        self.r_landing = np.zeros((3,len(self.t_landing),self.n_agents))
+        self.r_landing[2,:] = self.hover_height*(self.t_landing/t_max) #+ self.initial_pose.position.z
         v,_ = self.trajectory(self.r_landing)
         self.r_dot_landing = v
     
     def _landing_callback(self, msg):
         self.land_flag = msg.data
 
-    def hover(self):
-        msg = FullState()
-        msg.pose.position.x = self.initial_pose.position.x
-        msg.pose.position.y = self.initial_pose.position.y
-        msg.pose.position.z = self.hover_height
-        self.full_state_publisher.publish(msg)
+    # def hover(self):
+    #     msg = FullState()
+    #     msg.pose.position.x = self.initial_pose[0,:]
+    #     msg.pose.position.y = self.initial_pose[1,:]
+    #     msg.pose.position.z = self.hover_height
+    #     self.full_state_publisher.publish(msg)
 
     def landing(self):
         self.next_point(self.r_landing[:,self.i_landing],self.r_dot_landing[:,self.i_landing])
