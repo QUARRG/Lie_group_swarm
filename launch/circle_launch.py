@@ -80,13 +80,13 @@ def parse_yaml(context):
         ))
     for robot in crazyflies['robots']:
         if crazyflies['robots'][robot]['enabled']:
-            Nodes.append(Node(
-                package='crazy_encirclement',
-                executable='crazy_circle',
-                name=robot+'_crazy_circle',
-                output='screen',
-                parameters=[{'robot_prefix': robot}]
-                ))
+            # Nodes.append(Node(
+                # package='crazy_encirclement',
+                # executable='crazy_circle',
+                # name=robot+'_crazy_circle',
+                # output='screen',
+                # parameters=[{'robot_prefix': robot}]
+                # ))
             Nodes.append(Node(
                 package='crazyflie',
                 executable='watch_dog.py',
