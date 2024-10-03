@@ -32,7 +32,7 @@ agents_r[:, 2, 0] = np.array([0.36,0.17 ,0]).T
 embedding = Embedding(r, phi_dot,k_phi, 'dumbbell',n_agents)
 
 for i in range(N-1):
-    phi_new, target_r_new, target_v_new, _, phi_diff_new, distances_new = embedding.targets(agents_r[:,:,i], phi_cur[:,i])
+    phi_new, target_r_new, target_v_new, _, _, phi_diff_new, distances_new = embedding.targets(agents_r[:,:,0],agents_v[:,:,0], phi_cur[:,0],dt)
     phi_cur[:,i+1] = phi_new
     target_r[:,:,i+1] = target_r_new
     target_v[:,:,i+1] = target_v_new
@@ -43,9 +43,9 @@ for i in range(N-1):
     agents_v[:,:,i+1] = agents_v[:,:,i] + accels[:,:,i]*dt
     agents_r[:,:,i+1] = agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2
 
-    #accels[:,:,i] = kx*(target_r[:,:,i] - agents_r[:,:,i]) 
-    #agents_r[:,:,i+1] = agents_r[:,:,i] + accels[:,:,i]*dt
-    #agents_r[:,:,i+1] = agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2
+    accels[:,:,i] = kx*(target_r[:,:,i] - agents_r[:,:,i]) 
+    agents_r[:,:,i+1] = agents_r[:,:,i] + accels[:,:,i]*dt
+    agents_r[:,:,i+1] = agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')

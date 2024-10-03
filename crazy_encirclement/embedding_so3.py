@@ -15,7 +15,7 @@ class Embedding():
         self.dt = dt
 
        
-    def targets(self,agent_r, phi_prev):
+    def targets(self,agent_r, agent_v,phi_prev):
 
         target_r = np.zeros((3, self.n))
         target_v = np.zeros((3, self.n))
@@ -56,8 +56,8 @@ class Embedding():
 
             wd = self.phi_dot_desired(phi_i, phi_j, phi_k, self.phi_dot, self.k_phi)
             v_d_hat = np.array([0, 0, -wd])
-            #Rot = self.tactic_parameters(phi_i)
-            Rot = Rot@expm(R3_so3(v_d_hat.reshape(-1,1))*self.dt)
+            Rot = self.tactic_parameters(phi_i)
+            #Rot = Rot@expm(R3_so3(v_d_hat.reshape(-1,1))*self.dt)
             v_d = Rot@v_d_hat.T
             #v_x, v_y, v_z = v_d.parts[1:]
             v = np.cross(v_d.T, agent_r[:, i])
@@ -114,9 +114,24 @@ class Embedding():
         elif self.tactic == 'circle':
             a = 1
             b = 0
+        elif self.tactic == 'bernoulli':
+            a = -(np.sqrt(2)*np.sqrt(np.cos(phi) + 1))/(2*np.sqrt(np.sin(phi)**2 + 1))
+            b = -(np.sqrt(2)*np.sqrt(1-np.cos(phi)))/(2*np.sqrt(np.sin(phi)**2 + 1))
         
+        elif self.tactic == 'gerono':
+            a = -(np.sqrt(2)*np.sqrt(1-np.sin(phi))/2)
+            b = -(np.sqrt(2)*np.sqrt(1+np.sin(phi))/2)
         r = R.from_quat([b, 0, 0,a])
-        return r.as_matrix()
+
+        #print('rotation',r.as_matrix())
+        mat = np.array([[1, 0, 0],
+                        [0, np.cos(phi), -np.sin(phi)],
+                        [0, np.sin(phi), np.cos(phi)]])
+        #print('mat',mat)
+        if np.linalg.det(mat-r.as_matrix()) > 10e-7:
+            print('det',np.linalg.det(mat-r.as_matrix()))
+            input()
+        return mat#r.as_matrix()
 
     # Quaternion multiplication function (can be skipped if using numpy.quaternion)
     def quat_mult(self,q1, q2):

@@ -31,8 +31,13 @@ class Encirclement(Node):
         self.phi_dot  = float(self.get_parameter('phi_dot').value)
         self.tactic  = self.get_parameter('tactic').value
         self.order = None
-        self.initial_pose = {}
+        self.initial_pose = None
         self.initial_phase = {}
+        self.final_pose = None
+        self.has_taken_off = False
+        self.has_hovered = False
+        self.has_landed = False
+        self.land_flag = False
 
         while bool(self.initial_phase) == False:
             rclpy.spin_once(self, timeout_sec=0.1)
@@ -69,15 +74,8 @@ class Encirclement(Node):
         self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents)
         self.timer_period = 0.1
 
-
-
-        #landing trajectory
-        self.t_landing = np.arange(self.t_max,1,-self.timer_period)
-        self.i_landing = 0
-        self.r_landing = np.zeros((3,len(self.t_landing)))
-        self.r_landing[2,:] = self.hover_height*(self.t_landing/self.t_max) #+ self.initial_pose.position.z
-        v,_ = self.trajectory(self.r_landing)
-        self.r_dot_landing = v
+        self.takeoff_traj(5)
+        self.landing_traj(3)
 
         input("Press Enter to takeoff")
 
@@ -88,12 +86,7 @@ class Encirclement(Node):
         self.phi_cur = phi_new
 
         try:
-            if self.land_flag or (self.i > len(self.t)-2):
-                if self.final_pose is None:
-                    self.final_pose = self.pose
-                    self.r_landing[0,:] += self.final_pose.position.x
-                    self.r_landing[1,:] += self.final_pose.position.y
-
+            if self.land_flag:
                 self.landing()
 
                 if self.i_landing < len(self.t_landing)-1:
@@ -109,7 +102,6 @@ class Encirclement(Node):
             elif not self.has_taken_off:
                 self.takeoff()
 
-            #TODO: CONVERT THE ANGULAR VELOCITY TO THE BODY FRAME
             elif (not self.has_hovered) and (self.has_taken_off):
                 self.hover()   
                 if ((time.time()-self.t_init) > 5):
@@ -117,15 +109,13 @@ class Encirclement(Node):
                     self.get_logger().info('Hovering finished')
                 else:
                     phi_new, target_r_new, target_v_new, target_a_new, _, _, _ = self.embedding.targets(self.agents_r,self.target_v_new, self.phi_cur,self.timer_period)
-                    Wr_r_new, f_T_r_new, _,quat_new, self.Ca_r = generate_reference(target_a_new,self.Ca_r,self.Ca_b,target_v_new,self.timer_period)
+                    Wr_r_new, _, _,quat_new, self.Ca_r = generate_reference(target_a_new,self.Ca_r,self.Ca_b,target_v_new,self.timer_period)
 
-            #ITS COOL UNTIL HERE
             elif not self.has_landed:# and self.pose.position.z > 0.10:#self.ra_r[:,0]:
                 self.phi_cur, target_r_new, self.target_v_new, target_a_new, _, _, _ = self.embedding.targets(self.agents_r,self.target_v_new, self.phi_cur,self.timer_period)
-                Wr_r_new, f_T_r_new, _,quat_new, self.Ca_r = generate_reference(target_a_new,self.Ca_r,self.Ca_b,target_v_new,self.timer_period)
-                self.next_point(self.ra_r[:,self.i],self.va_r[:,self.i],self.va_r_dot[:,self.i],Wr_r_new,quat_new,self.Ca_r[:,:,self.i])
+                Wr_r_new, _, _,quat_new, self.Ca_r = generate_reference(target_a_new,self.Ca_r,self.Ca_b,target_v_new,self.timer_period)
+                self.next_point(target_r_new,self.target_v_new,target_a_new,Wr_r_new,quat_new,self.Ca_r)
                 
-
 
         except KeyboardInterrupt:
             self.landing()
@@ -140,34 +130,39 @@ class Encirclement(Node):
            poses topic to send through the external position
            to the crazyflie 
         """
-        # self.get_logger().error(f"Received poses")
-        poses = msg.poses
+
         if bool(self.initial_phase) == False:
             for pose in msg.poses:
                 if pose.name in self.robots:
                     self.initial_phase[str(pose.name)] = np.arctan2(pose.pose.position.y, pose.pose.position.x)
             
             self.order = sorted(self.initial_phases, key=lambda x: self.initial_phase[x])
-        elif bool(self.initial_pose) == False:
+        elif self.initial_pose == None:
+            self.initial_pose = np.zeros((3,self.n_agents))
             for pose in msg.poses:
                 if pose.name in self.robots:
-                    self.initial_pose[pose.name] = pose.pose.position
-        #TODO: continue correcting this
-        for pose in poses:
-            if pose.name in self.robots:
-                if bool(self.initial_phase) == False:
-                    self.initial_phase[str(pose.name)] = np.arctan2(pose.pose.position.y, pose.pose.position.x)
-                    self.order = sorted(self.initial_phases, key=lambda x: self.initial_phase[x])
-                elif bool(self.initial_pose) == False:
-                    for order in self.order:
-                        self.initial_pose[order] = pose.pose.position
-                else:
+                    self.initial_pose[0,self.order.index(pose.name)] = pose.pose.position.x
+                    self.initial_pose[1,self.order.index(pose.name)] = pose.pose.position.y
+                    self.initial_pose[2,self.order.index(pose.name)] = pose.pose.position.z
+        elif self.land_flag != True:
+            for pose in msg.poses:
+                if pose.name in self.robots:
                     self.agents_r[0, self.order.index(pose.name)] = pose.pose.position.x
                     self.agents_r[1, self.order.index(pose.name)] = pose.pose.position.y
                     self.agents_r[2, self.order.index(pose.name)] = pose.pose.position.z
                     quat = [pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w]
                     self.Ca_b[:,:,self.order.index(pose.name)] = R.from_quat(quat).as_matrix()
-                #quat = pose.pose.orientation
+        elif self.final_pose == None:
+            self.final_pose = np.zeros((3,self.n_agents))
+            self.get_logger().info("Landing...")
+            for pose in msg.poses:
+                if pose.name in self.robots:
+                    self.final_pose[0,self.order.index(pose.name)] = pose.pose.position.x
+                    self.final_pose[1,self.order.index(pose.name)] = pose.pose.position.y
+                    self.final_pose[2,self.order.index(pose.name)] = pose.pose.position.z
+            
+            self.r_landing[0,:] += self.final_pose.position.x
+            self.r_landing[1,:] += self.final_pose.position.y
 
     def takeoff(self):
 
@@ -184,12 +179,23 @@ class Encirclement(Node):
         self.t_takeoff = np.arange(0,t_max,self.timer_period)
         #self.t_takeoff = np.tile(t_takeoff[:,np.newaxis],(1,self.n_agents))
         self.r_takeoff = np.zeros((3,len(self.t_takeoff,self.n_agents))) 
-
         self.r_takeoff[0,:] += self.initial_pose.position.x
         self.r_takeoff[1,:] += self.initial_pose.position.y
         self.r_takeoff[2,:] = self.hover_height*(self.t_takeoff/self.t_max) #+ self.initial_pose.position.z
         v,_ = self.trajectory(self.r_takeoff)
         self.r_dot_takeoff = v
+    def landing_traj(self,t_max):
+        #landing trajectory
+        self.t_landing = np.arange(t_max,1,-self.timer_period)
+        self.i_landing = 0
+        self.r_landing = np.zeros((3,len(self.t_landing)))
+        self.r_landing[2,:] = self.hover_height*(self.t_landing/self.t_max) #+ self.initial_pose.position.z
+        v,_ = self.trajectory(self.r_landing)
+        self.r_dot_landing = v
+    
+    def _landing_callback(self, msg):
+        self.land_flag = msg.data
+
     def hover(self):
         msg = FullState()
         msg.pose.position.x = self.initial_pose.position.x
@@ -206,24 +212,26 @@ class Encirclement(Node):
         time.sleep(2.0)
 
     def next_point(self,r,v,v_dot,Wr_r_new,quat_new):
+        i = 0
         for publisher in self.my_publishers:
             msg = FullState()
-            msg.pose.position.x = float(r[0])
-            msg.pose.position.y = float(r[1])
-            msg.pose.position.z = float(r[2])
-            msg.acc.x = float(v_dot[0])
-            msg.acc.y = float(v_dot[1])
-            msg.acc.z = float(v_dot[2])
-            msg.pose.orientation.x = float(quat_new[0])
-            msg.pose.orientation.y = float(quat_new[1])
-            msg.pose.orientation.z = float(quat_new[2])
-            msg.pose.orientation.w = float(quat_new[3])
-            msg.twist.linear.x = float(v[0])
-            msg.twist.linear.y = float(v[1])
-            msg.twist.linear.z = float(v[2])
-            msg.twist.angular.x = np.rad2deg(float(Wr_r_new[0]))
-            msg.twist.angular.y = np.rad2deg(float(Wr_r_new[1]))
-            msg.twist.angular.z = np.rad2deg(float(Wr_r_new[2]))
+            msg.pose.position.x = float(r[0,i])
+            msg.pose.position.y = float(r[1,i])
+            msg.pose.position.z = float(r[2,i])
+            msg.acc.x = float(v_dot[0,i])
+            msg.acc.y = float(v_dot[1,i])
+            msg.acc.z = float(v_dot[2,i])
+            msg.pose.orientation.x = float(quat_new[0,i])
+            msg.pose.orientation.y = float(quat_new[1,i])
+            msg.pose.orientation.z = float(quat_new[2,i])
+            msg.pose.orientation.w = float(quat_new[3,i])
+            msg.twist.linear.x = float(v[0,i])
+            msg.twist.linear.y = float(v[1,i])
+            msg.twist.linear.z = float(v[2,i])
+            msg.twist.angular.x = np.rad2deg(float(Wr_r_new[0,i]))
+            msg.twist.angular.y = np.rad2deg(float(Wr_r_new[1,i]))
+            msg.twist.angular.z = np.rad2deg(float(Wr_r_new[2,i]))
+            i+=1
             #self.get_logger().info(f"Publishing to {msg.pose.position.x}, {msg.pose.position.y}, {msg.pose.position.z}")
             publisher.publish(msg)
 

@@ -4,15 +4,16 @@ import quaternion
 import math
 
 class Embedding():
-    def __init__(self,r,phi_dot,k_phi,tactic,n_agents):
+    def __init__(self,r,phi_dot,k_phi,tactic,n_agents,dt):
         self.phi_dot = phi_dot
         self.r = r
         self.k_phi = k_phi
         self.tactic = tactic
         self.n = n_agents
+        self.dt = dt
 
        
-    def targets(self,agent_r, agent_v,phi_prev,dt):
+    def targets(self,agent_r, agent_v,phi_prev):
 
         target_r = np.zeros((3, self.n))
         target_v = np.zeros((3, self.n))
@@ -80,7 +81,7 @@ class Embedding():
             target_r[2, i] = pos_z
             unit[i, :] = [np.cos(phi_i), np.sin(phi_i), 0]
 
-            target_a = (target_r - agent_v)/dt
+            target_a = (target_r - agent_v)/self.dt
 
         k = 0
         for i in range(self.n):
@@ -118,6 +119,9 @@ class Embedding():
         elif self.tactic == 'circle':
             a = 1
             b = 0
+        elif self.tactic == 'bernoulli':
+            a = -(np.sqrt(2)*np.sqrt(np.cos(phi) + 1))/(2*np.sqrt(np.sin(phi)**2 + 1))
+            b = -(np.sqrt(2)*np.sqrt(1-np.cos(phi)))/(2*np.sqrt(np.sin(phi)**2 + 1))
         return np.quaternion(a, b, 0, 0)
 
     # Quaternion multiplication function (can be skipped if using numpy.quaternion)
