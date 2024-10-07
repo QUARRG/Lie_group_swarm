@@ -20,7 +20,7 @@ from crazy_encirclement.set_parameter_client import SetParameterClient
 class Circle(Node):
     def __init__(self):
         super().__init__('circle_trajectory_node')
-        self.declare_parameter('robot_prefix', 'C103')  
+        self.declare_parameter('robot_prefix', 'C120')  
 
         self.robot = self.get_parameter('robot_prefix').value
         #clients

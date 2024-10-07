@@ -4,7 +4,7 @@ import quaternion
 import math
 from utils2 import R3_so3
 from scipy.linalg import expm
-
+from icecream import ic
 class Embedding():
     def __init__(self,r,phi_dot,k_phi,tactic,n_agents,dt):
         self.phi_dot = phi_dot
@@ -117,21 +117,27 @@ class Embedding():
         elif self.tactic == 'bernoulli':
             a = -(np.sqrt(2)*np.sqrt(np.cos(phi) + 1))/(2*np.sqrt(np.sin(phi)**2 + 1))
             b = -(np.sqrt(2)*np.sqrt(1-np.cos(phi)))/(2*np.sqrt(np.sin(phi)**2 + 1))
+            norm = np.sqrt(a**2 + b**2)
+            a = a / norm
+            b = b / norm
         
         elif self.tactic == 'gerono':
             a = -(np.sqrt(2)*np.sqrt(1-np.sin(phi))/2)
             b = -(np.sqrt(2)*np.sqrt(1+np.sin(phi))/2)
+            norm = np.sqrt(a**2 + b**2)
+            a = a / norm
+            b = b / norm
         r = R.from_quat([b, 0, 0,a])
 
-        #print('rotation',r.as_matrix())
+        #ic(r.as_matrix())
         mat = np.array([[1, 0, 0],
                         [0, np.cos(phi), -np.sin(phi)],
                         [0, np.sin(phi), np.cos(phi)]])
-        #print('mat',mat)
+        #ic(mat)
         if np.linalg.det(mat-r.as_matrix()) > 10e-7:
             print('det',np.linalg.det(mat-r.as_matrix()))
             input()
-        return mat#r.as_matrix()
+        return r.as_matrix()
 
     # Quaternion multiplication function (can be skipped if using numpy.quaternion)
     def quat_mult(self,q1, q2):
