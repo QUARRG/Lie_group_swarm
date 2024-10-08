@@ -24,6 +24,7 @@ setup(
         'console_scripts': [
             'encirclement = crazy_encirclement.encirclement:main',
             'crazy_circle = crazy_encirclement.crazy_circle:main',
+            'agents_order = crazy_encirclement.agents_order:main',
         ],
     },
 )

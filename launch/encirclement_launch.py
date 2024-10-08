@@ -87,19 +87,34 @@ def parse_yaml(context):
             parameters= server_params,
         ))
       
+
     robots_list = []
     for robot in crazyflies['robots']:
         #if crazyflies[str(robot)]['enabled']:
         if crazyflies['robots'][robot]['enabled']:
             robots_list.append(robot)
-
+            # Nodes.append(Node(
+            #     package='crazy_encirclement',
+            #     executable='encirclement',
+            #     name=robot+'_encirclement',
+            #     output='screen',
+            #     parameters=[{'robot': robot}]
+            #     ))
+            Nodes.append(Node(
+                package='crazyflie',
+                executable='watch_dog.py',
+                name=robot+'_watch_dog',
+                output='screen',
+                parameters=[{'robot_prefix': robot}]
+            ))
+    
     Nodes.append(Node(
         package='crazy_encirclement',
-        executable='encirclement.py',
-        name='encirclement',
+        executable='agents_order',
+        name='agents_order',
         output='screen',
-        parameters=[{'robots': robots_list}]
-        ))
+        parameters= [{'robot_data': robots_list}]
+    ))
     return Nodes
 
 def generate_launch_description():

@@ -20,7 +20,7 @@ from crazy_encirclement.set_parameter_client import SetParameterClient
 class Circle(Node):
     def __init__(self):
         super().__init__('circle_trajectory_node')
-        self.declare_parameter('robot_prefix', 'C120')  
+        self.declare_parameter('robot_prefix', 'C04')  
 
         self.robot = self.get_parameter('robot_prefix').value
         #clients
@@ -72,7 +72,7 @@ class Circle(Node):
         self.r = np.sqrt(x**2 + y**2)
         phase = np.arctan2(y,x)
         #center = np.array([np.sign(x)*(np.abs(x)-self.r),np.sign(y)*(np.abs(y)-self.r)])
-        self.hover_height = 0.3
+        self.hover_height = 0.25
        
         
         #generating the cicle trajectory

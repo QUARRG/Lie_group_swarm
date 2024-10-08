@@ -2,6 +2,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 import quaternion
 import math
+from crazy_encirclement.utils2 import generate_reference
 
 class Embedding():
     def __init__(self,r,phi_dot,k_phi,tactic,n_agents,dt,circle_height=0.3):
@@ -9,94 +10,82 @@ class Embedding():
         self.r = r
         self.k_phi = k_phi
         self.tactic = tactic
-        self.n = n_agents
+        self.n = 3
         self.dt = dt
         self.circle_height = circle_height
+        self.target_r = np.zeros((3))
+        self.target_v = np.zeros((3))
+        self.target_a = np.zeros((3))
+        self.phi_cur = np.zeros(self.n)
+        self.unit = np.zeros((self.n))
+        self.n_diff = int(np.math.factorial(self.n) / (math.factorial(2) * math.factorial(self.n-2)))
+        self.phi_diff = np.zeros(self.n_diff)
+        self.distances = np.zeros(self.n_diff)
+        self.unit = np.zeros((self.n, 3))
+        self.Ca_b = np.zeros((3,3))
 
        
-    def targets(self,agent_r, agent_v,phi_prev):
+    def targets(self,agent_r, agent_v,phi_prev,Ca_b):
 
-        target_r = np.zeros((3, self.n))
-        target_v = np.zeros((3, self.n))
-        target_a = np.zeros((3, self.n))
-        phi_cur = np.zeros(self.n)
-        unit = np.zeros((self.n, 3))
-        n_diff = int(np.math.factorial(self.n) / (math.factorial(2) * math.factorial(self.n-2)))
-        phi_diff = np.zeros(n_diff)
-        distances = np.zeros(n_diff)
-        unit = np.zeros((self.n, 3))
 
-        pos_circle = np.zeros((3, self.n))
-
-        for i in range(self.n):
             # Circle position
-            pos = np.quaternion(0, agent_r[0, i], agent_r[1, i], agent_r[2, i])
-            quat = self.tactic_parameters(phi_prev[i])
-            pos_rot = self.rotate(pos, quat.conjugate())
-            phi, _ = self.cart2pol(pos_rot)
-            pos_x = pos_rot.x
-            pos_y = pos_rot.y
-            #pos_x, pos_y, _ = pos_rot.parts[1:]  # Ignoring the scalar part
-            phi_cur[i] = phi
-            pos_circle[0, i] = pos_x
-            pos_circle[1, i] = pos_y
-            unit[i, :] = [np.cos(phi), np.sin(phi), 0]
+        pos = np.quaternion(0, agent_r[0], agent_r[1], agent_r[2])
+        quat = self.tactic_parameters(phi_prev)
+        pos_rot = self.rotate(pos, quat.conjugate())
+        phi_i, _ = self.cart2pol(pos_rot)
+        #pos_x, pos_y, _ = pos_rot.parts[1:]  # Ignoring the scalar part
 
-        for i in range(self.n):
-            phi_i = phi_cur[i]
-            if i == 0:
-                phi_k = phi_cur[i+1]
-                phi_j = phi_cur[self.n-1]
-            elif i == self.n-1:
-                phi_k = phi_cur[0]
-                phi_j = phi_cur[i-1]
-            else:
-                phi_k = phi_cur[i+1]
-                phi_j = phi_cur[i-1]
+    # for i in range(self.n):
+    #     phi_i = self.phi_cur[i]
+    #     if i == 0:
+    #         phi_k = self.phi_cur[i+1]
+    #         phi_j = self.phi_cur[self.n-1]
+    #     elif i == self.n-1:
+    #         phi_k = self.phi_cur[0]
+    #         phi_j = self.phi_cur[i-1]
+    #     else:
+    #         phi_k = self.phi_cur[i+1]
+    #         phi_j = self.phi_cur[i-1]
+        phi_k = phi_prev[0] #the first phase is the heading agent's
+        phi_j = phi_prev[2] #the last phase is the lagging agent's
+        wd = self.phi_dot_desired(phi_i, phi_j, phi_k, self.phi_dot, self.k_phi)
+        v_d_hat = np.quaternion(0, 0, 0, -wd)
+        quat = self.tactic_parameters(phi_i)
+        v_d = self.rotate(v_d_hat, quat)
 
-            wd = self.phi_dot_desired(phi_i, phi_j, phi_k, self.phi_dot, self.k_phi)
-            v_d_hat = np.quaternion(0, 0, 0, -wd)
-            quat = self.tactic_parameters(phi_i)
-            v_d = self.rotate(v_d_hat, quat)
-            v_x = v_d.x
-            v_y = v_d.y
-            v_z = v_d.z
-            #v_x, v_y, v_z = v_d.parts[1:]
-            v = np.cross([v_x, v_y, v_z], agent_r[:, i])
+        #v_x, v_y, v_z = v_d.parts[1:]
+        v = np.cross([v_d.x, v_d.y, v_d.z], agent_r)
 
-            target_v[0, i] = v[0]
-            target_v[1, i] = v[1]
-            target_v[2, i] = v[2]
+        self.target_v[0] = v[0]
+        self.target_v[1] = v[1]
+        self.target_v[2] = v[2]
 
-            x = self.r * np.cos(phi_i)
-            y = self.r * np.sin(phi_i)
-            pos_d_hat = np.quaternion(0, x, y, 0)
-            pos_d = self.rotate(pos_d_hat, quat)
-            pos_x = pos_d.x
-            pos_y = pos_d.y
-            pos_z = pos_d.z
-            #pos_x, pos_y, pos_z = pos_d.parts[1:]
+        x = self.r * np.cos(phi_i)
+        y = self.r * np.sin(phi_i)
+        pos_d_hat = np.quaternion(0, x, y, 0)
+        pos_d = self.rotate(pos_d_hat, quat)
+        #pos_x, pos_y, pos_z = pos_d.parts[1:]
 
-            target_r[0, i] = pos_x
-            target_r[1, i] = pos_y
-            if self.tactic == 'circle':
-                target_r[2, i] = self.circle_height
-            else:
-                target_r[2, i] = pos_z
-            unit[i, :] = [np.cos(phi_i), np.sin(phi_i), 0]
+        self.target_r[0] = pos_d.x
+        self.target_r[1] = pos_d.y
+        if self.tactic == 'circle':
+            self.target_r[2] = self.circle_height
+        else:
+            self.target_r[2] = pos_d.z
+        # self.unit[i, :] = [np.cos(phi_i), np.sin(phi_i), 0]
         
-        target_v = np.clip(target_v, -0.3, 0.3)
-        target_a = (target_v - agent_v)/self.dt
-        target_a = np.clip(target_a, -0.3, 0.3)
+        self.target_v = np.clip(self.target_v, -0.3, 0.3)
+        self.target_a = (self.target_v - agent_v)/self.dt
+        self.target_a = np.clip(self.target_a, -0.3, 0.3)
 
-        k = 0
-        for i in range(self.n):
-            for j in range(i+1, self.n):
-                distances[k] = np.linalg.norm(target_r[:, i] - target_r[:, j])
-                phi_diff[k] = np.arccos(np.dot(unit[i,:],unit[j,:]))
-                k += 1
-            
-        return phi_cur, target_r, target_v, target_a, pos_circle, phi_diff, distances
+        # k = 0
+        # for i in range(self.n):
+        #     for j in range(i+1, self.n):
+        #         self.distances[k] = np.linalg.norm(self.target_r - self.target_r[:, j])
+        #         self.phi_diff[k] = np.arccos(np.dot(self.unit[i,:],self.unit[j,:]))
+        #         k += 1
+        Wr_r, _, _, quaternion, self.Ca_r = generate_reference(self.target_v,self.target_a, self.Ca_r, Ca_b, self.dt)   
+        return phi_i, self.target_r, self.target_v, self.target_a, quaternion, Wr_r
 
     def phi_dot_desired(self,phi_i, phi_j, phi_k, phi_dot_des, k):
         phi_ki = np.mod(phi_i - phi_k, 2*np.pi)
@@ -107,12 +96,10 @@ class Embedding():
         return quat * pos * quat.conjugate()
 
     def cart2pol(self,pos_rot):
-        pos_x = pos_rot.x
-        pos_y = pos_rot.y
         #pos_x, pos_y, _ = pos_rot.parts[1:]
-        phi = np.arctan2(pos_y, pos_x)
+        phi = np.arctan2(pos_rot.y, pos_rot.x)
         phi = np.mod(phi, 2*np.pi)
-        r = np.linalg.norm([pos_x, pos_y])
+        r = np.linalg.norm([pos_rot.x, pos_rot.y])
         return phi, r
 
     def tactic_parameters(self,phi):

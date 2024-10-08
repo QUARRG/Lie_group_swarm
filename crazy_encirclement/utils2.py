@@ -9,7 +9,7 @@ I3 = np.array([0,0,1]).T
 w_r = 0 #reference yaw
 ca_1 = np.array([np.cos(w_r),np.sin(w_r),0]).T #auxiliar vector 
 
-def generate_reference(va_r_dot,Ca_r,va_r,dt):
+def generate_reference(va_r,va_r_dot,Ca_r,Ca_b,dt):
 
 
     fa_r = mb*va_r_dot +mb*g*I3 + Ca_r@D@Ca_r.T@va_r
@@ -34,7 +34,7 @@ def generate_reference(va_r_dot,Ca_r,va_r,dt):
 
     angles = R.from_matrix(Ca_r_new).as_euler('zyx', degrees=False)
     quaternion = R.from_matrix(Ca_r_new).as_quat()
-        
+    Wr_r = Ca_b.T@Ca_r@Wr_r
     return Wr_r, f_T_r, angles, quaternion, Ca_r_new
 
 def R3_so3(w):
@@ -56,3 +56,9 @@ def so3_R3(Rot):
     w = np.array([w1,w2,w3]).T
     return w
 
+def trajectory(r,dt):
+    v = np.zeros_like(r)
+    v_dot = np.zeros_like(v)
+    v[:,0:-1] = np.diff(r[:,:],axis=1)/dt
+    v_dot[:,0:-2] = np.diff(v[:,:-1],axis=1)/dt
+    return v,v_dot
