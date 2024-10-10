@@ -41,6 +41,7 @@ class AgentsOrder(Node):
         )
         while self.has_order == False:
             rclpy.spin_once(self, timeout_sec=0.1)
+        # self.order.data = ['C04', 'C20', 'C05']
 
         self.order_publisher = self.create_publisher(StringArray, '/agents_order', 10)
         self.timer_period = 0.01
@@ -70,8 +71,10 @@ class AgentsOrder(Node):
                     self.initial_phases[str(pose.name)] = np.mod(np.arctan2(pose.pose.position.y, pose.pose.position.x),2*np.pi)
             
             self.order.data = sorted(self.initial_phases, key=lambda x: self.initial_phases[x],reverse=True)
+            self.get_logger().info(f'Order of agents: {self.order.data}')
             self.has_order = True         
-            self.info(f'Order of agents: {self.order}')           
+            self.info(f'Order of agents: {self.order}')    
+
 
 def main():
     rclpy.init()

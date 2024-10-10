@@ -34,13 +34,14 @@ class Encirclement(Node):
         self.phi_dot  = float(self.get_parameter('phi_dot').value)
         self.tactic  = self.get_parameter('tactic').value
         self.reboot_client = self.create_client(Empty,  '/'+'all'+'/reboot')
-        self.order = np.zeros(3)
+        self.order = []
         self.has_initial_pose = False
         self.has_final = False
         self.has_taken_off = False
         self.has_hovered = False
         self.has_landed = False
         self.land_flag = False
+        self.encircle_flag = False
         self.has_order = False
         self.final_pose = np.zeros(3)
         self.initial_pose = np.zeros(3)
@@ -54,8 +55,13 @@ class Encirclement(Node):
         
         self.create_subscription(
             Bool,
-            'landing',
+            '/landing',
             self._landing_callback,
+            10)
+        self.create_subscription(
+            Bool,
+            '/encircle',
+            self._encircle_callback,
             10)
         qos_profile = QoSProfile(reliability =QoSReliabilityPolicy.BEST_EFFORT,
             history=QoSHistoryPolicy.KEEP_LAST,
@@ -73,13 +79,14 @@ class Encirclement(Node):
             self._order_callback,
             10)
         
-        while not self.has_initial_pose and not self.has_order:
-
+        while not self.has_order:
+            rclpy.spin_once(self, timeout_sec=0.1)
+        while (not self.has_initial_pose):
             rclpy.spin_once(self, timeout_sec=0.1)
 
         self.info(f"Initial pose: {self.initial_pose}")
         self.info("First pose received. Moving on...")
-        self.info(f"Order: {self.order}")
+
 
         self.full_state_pub = self.create_publisher(FullState,'/'+ self.robot + '/cmd_full_state', 10)
         self.phase_pub = self.create_publisher(Float32,'/'+ self.robot + '/phase', 10)
@@ -98,7 +105,7 @@ class Encirclement(Node):
             self.create_subscription(
                 Float32,
                 '/'+self.order[2]+'/phase',
-                self._leading_phase_callback,
+                self._lagging_phase_callback,
                 10)
         else:            
             self.create_subscription(
@@ -113,14 +120,14 @@ class Encirclement(Node):
                 10)
             
             self.phases = np.zeros(2)
-        self.timer_period = 0.02
+        self.timer_period = 0.01
         self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents,self.timer_period)
 
         self.takeoff_traj(3)
         self.landing_traj(3)
 
-        # input("Press Enter to takeoff")
-        time.sleep(2.0)
+        input("Press Enter to takeoff")
+        #time.sleep(2.0)
 
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
 
@@ -145,19 +152,19 @@ class Encirclement(Node):
 
             elif (not self.has_hovered) and (self.has_taken_off) and not self.has_landed:
                 self.hover()   
-                if ((time.time()-self.t_init) > 5):
+                if self.encircle_flag:
                     self.has_hovered = True
                     self.info('Hovering finished')
                 else:
-                    self.embedding.targets(self.agents_r,self.target_v, self.phi_cur,self.Ca_b)
+                    self.embedding.targets(self.agents_r,self.target_v, self.phases,self.Ca_b)
 
             elif not self.has_landed and self.has_hovered:# and self.pose.position.z > 0.10:#self.ra_r[:,0]:
                 #self.info("encirclement")
-
-                self.phi_cur, target_r, self.target_v, target_a, quaternion, Wr_r= self.embedding.targets(self.agents_r,self.target_v, self.phases,self.Ca_b)
+                self.phi_cur.data, target_r, self.target_v, target_a, quaternion, Wr_r= self.embedding.targets(self.agents_r,self.target_v, self.phases,self.Ca_b)
                 self.next_point(target_r,self.target_v,target_a,Wr_r,quaternion)
                 self.phase_pub.publish(self.phi_cur)
-                self.phases[1] = self.phi_cur.copy()
+                self.phases[1] = self.phi_cur.data.copy()
+ 
                 # self.info(f"target_r_new: {target_r_new}")
                 # self.info(f"target_v_new: {target_v_new}")
                 # self.info(f"agents_r: {self.agents_r}")
@@ -166,11 +173,6 @@ class Encirclement(Node):
                 # agents_v = self.agents_v + accels*self.timer_period
                 # self.agents_r = self.agents_r + agents_v*self.timer_period + 0.5*accels*self.timer_period**2
                 # self.agents_v = agents_v
-
-                
-
-                
-                input("Press Enter to continue")
                 #self.landing()
                 
 
@@ -183,33 +185,38 @@ class Encirclement(Node):
             #self.publishers[i].publish(msg)
     
     def _order_callback(self, msg):
-        self.has_order = True
+        
         order = msg.data
-        for i in range(len(order)):
-            if order[i] == self.robot:
-                if self.n_agents > 2:
-                    if i == 0:
-                        self.order[0] = order[-1]
-                        self.order[1] = order[i]
-                        self.order[2] = order[i+1]
-                    elif i == len(order)-1:
-                        self.order[0] = order[i-1]
-                        self.order[1] = order[i]
-                        self.order[2] = order[0]
-                    else:
-                        self.order[0] = order[i-1]
-                        self.order[1] = order[i]
-                        self.order[2] = order[i+1]
-                else: 
-                    #TO DO: check what to do with 2 agents ###################
-                    if i == 1:
-                        self.order[0] = order[i-1]
-                        self.order[1] = order[i]
-                        self.order[2] = order[i-1]
-                    else:
-                        self.order[0]= order[i+1]
-                        self.order[1] = order[i]
-                        self.order[2] = order[i+1]
+        if not self.has_order:
+            self.has_order = True
+            for i in range(len(order)):
+
+                if order[i] == self.robot:
+                    self.has_order = True
+                    if self.n_agents > 2:
+                        if i == 0:
+                            self.order.append(order[-1])
+                            self.order.append(order[i])
+                            self.order.append(order[i+1])
+                        elif i == len(order)-1:
+                            self.order.append(order[i-1])
+                            self.order.append(order[i])
+                            self.order.append(order[0])
+                        else:
+                            self.order.append(order[i-1])
+                            self.order.append(order[i])
+                            self.order.append(order[i+1])
+                    else: 
+                        #TO DO: check what to do with 2 agents ###################
+                        if i == 1:
+                            self.order.append(order[i-1])
+                            self.order.append(order[i])
+                            self.order.append(order[i-1])
+                        else:
+                            self.order.append(order[i+1])
+                            self.order.append(order[i])
+                            self.order.append(order[i+1])
+                    self.info(f"Order of agents: {self.order}")
 
     def _poses_changed(self, msg):
         """
@@ -236,16 +243,15 @@ class Encirclement(Node):
                     self.Ca_b[:,:] = R.from_quat(quat).as_matrix()
         elif self.has_final == False and self.land_flag == True:
             self.has_final = True
-            self.final_pose = np.zeros((3,self.n_agents))
+            self.final_pose = np.zeros(3)
             self.info("Landing...")
             for pose in msg.poses:
                 if pose.name == self.robot:
                     self.final_pose[0] = pose.pose.position.x
                     self.final_pose[1] = pose.pose.position.y
                     self.final_pose[2] = pose.pose.position.z
-            
-            self.r_landing[0,:] += np.tile(self.final_pose[0,np.newaxis],(1,len(self.t_landing)))
-            self.r_landing[1,:] += np.tile(self.final_pose[1,np.newaxis],(1,len(self.t_landing)))
+            self.r_landing[0,:] += self.final_pose[0]*np.ones(len(self.t_landing))
+            self.r_landing[1,:] += self.final_pose[1]*np.ones(len(self.t_landing))
 
     def _heading_phase_callback(self, msg):
         self.phases[0] = msg.data
@@ -254,8 +260,7 @@ class Encirclement(Node):
         self.phases[2] = msg.data
 
     def takeoff(self):
-
-        self.next_point(self.r_takeoff[:,self.i_takeoff],self.r_dot_takeoff[:,self.i_takeoff],np.zeros((3,self.n_agents)),self.Wr_r_default,self.quat_default)
+        self.next_point(self.r_takeoff[:,self.i_takeoff],self.r_dot_takeoff[:,self.i_takeoff],np.zeros((3)))
         #self.info(f"Publishing to {msg.pose.position.x}, {msg.pose.position.y}, {msg.pose.position.z}")
         if self.i_takeoff < len(self.t_takeoff)-1:
             self.i_takeoff += 1
@@ -268,8 +273,8 @@ class Encirclement(Node):
         self.t_takeoff = np.arange(0,t_max,self.timer_period)
         #self.t_takeoff = np.tile(t_takeoff[:,np.newaxis],(1,self.n_agents))
         self.r_takeoff = np.zeros((3,len(self.t_takeoff))) 
-        self.r_takeoff[0,:] += np.tile(self.initial_pose[0,np.newaxis],(1,len(self.t_takeoff)))
-        self.r_takeoff[1,:] += np.tile(self.initial_pose[1,np.newaxis],(1,len(self.t_takeoff)))
+        self.r_takeoff[0,:] += self.initial_pose[0]*np.ones(len(self.t_takeoff))
+        self.r_takeoff[1,:] += self.initial_pose[1]*np.ones(len(self.t_takeoff))
         self.r_takeoff[2,:] = self.hover_height*(self.t_takeoff/t_max)
         v,_ = trajectory(self.r_takeoff,self.timer_period)
         self.r_dot_takeoff = v
@@ -286,17 +291,21 @@ class Encirclement(Node):
     def _landing_callback(self, msg):
         self.land_flag = msg.data
 
+    def _encircle_callback(self, msg):
+        self.encircle_flag = msg.data
+
     def hover(self):
 
         msg = FullState()
-        msg.pose.position.x = self.r_takeoff[0,-1]
-        msg.pose.position.y = self.r_takeoff[1,-1]
+        msg.pose.position.x = self.initial_pose[0]
+        msg.pose.position.y = self.initial_pose[1]
         msg.pose.position.z = self.hover_height
         self.full_state_pub.publish(msg)
 
 
     def landing(self):
-        self.next_point(self.r_landing[:,self.i_landing],self.r_dot_landing[:,self.i_landing],np.zeros((3)),self.Wr_r_default,self.quat_default)
+        self.next_point(self.r_landing[:,self.i_landing],self.r_dot_landing[:,self.i_landing]
+                        ,np.zeros((3)))
 
     def reboot(self):
         req = Empty.Request()
@@ -304,7 +313,6 @@ class Encirclement(Node):
         time.sleep(2.0)
 
     def next_point(self,r,v,v_dot,Wr_r_new=np.zeros(3),quat_new=np.array([0,0,0,1])):
-
         msg = FullState()
         msg.pose.position.x = float(r[0])
         msg.pose.position.y = float(r[1])

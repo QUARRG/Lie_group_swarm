@@ -22,7 +22,7 @@ class Embedding():
         self.phi_diff = np.zeros(self.n_diff)
         self.distances = np.zeros(self.n_diff)
         self.unit = np.zeros((self.n, 3))
-        self.Ca_b = np.zeros((3,3))
+        self.Ca_r = np.zeros((3,3))
 
        
     def targets(self,agent_r, agent_v,phi_prev,Ca_b):

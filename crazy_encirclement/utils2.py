@@ -59,6 +59,6 @@ def so3_R3(Rot):
 def trajectory(r,dt):
     v = np.zeros_like(r)
     v_dot = np.zeros_like(v)
-    v[:,0:-1] = np.diff(r[:,:],axis=1)/dt
+    v[:,0:-1] = np.diff(r,axis=1)/dt
     v_dot[:,0:-2] = np.diff(v[:,:-1],axis=1)/dt
     return v,v_dot
