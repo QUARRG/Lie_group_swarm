@@ -108,13 +108,13 @@ def parse_yaml(context):
                 parameters=[{'robot_prefix': robot}]
             ))
     
-    Nodes.append(Node(
-        package='crazy_encirclement',
-        executable='agents_order',
-        name='agents_order',
-        output='screen',
-        parameters= [{'robot_data': robots_list}]
-    ))
+    # Nodes.append(Node(
+    #     package='crazy_encirclement',
+    #     executable='agents_order',
+    #     name='agents_order',
+    #     output='screen',
+    #     parameters= [{'robot_data': robots_list}]
+    # ))
     return Nodes
 
 def generate_launch_description():
@@ -186,3 +186,5 @@ def generate_launch_description():
 
     # Return the LaunchDescription with all the nodes
     return LaunchDescription(nodes)
+#ros2 launch crazy_encirclement <launch_file>.launch.py --ros-args -p robot:=C05 --remap /old_topic:=/new_topic
+#ros2 run crazy_encirclement encirclement --ros-args -p robot:='C05' --remap /encirclement:=/C05/encirclement

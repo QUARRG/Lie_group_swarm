@@ -126,11 +126,12 @@ class Encirclement(Node):
         #         10)
             
             # self.phases = np.zeros(2)
-        self.timer_period = 0.01
+        self.timer_period = 0.010
         self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents,self.timer_period)
-
+        while (not self.has_initial_pose):
+            rclpy.spin_
+        self.landing_traj(4)
         self.takeoff_traj(3)
-        self.landing_traj(3)
 
         input("Press Enter to takeoff")
         #time.sleep(2.0)
@@ -166,10 +167,12 @@ class Encirclement(Node):
 
             elif not self.has_landed and self.has_hovered:# and self.pose.position.z > 0.10:#self.ra_r[:,0]:
                 #self.info("encirclement")
+                beginning = time.time()
                 self.phi_cur.data, target_r, self.target_v, target_a, quaternion, Wr_r= self.embedding.targets(self.agents_r,self.target_v, self.phases,self.Ca_b)
                 self.next_point(target_r,self.target_v,target_a,Wr_r,quaternion)
                 self.phase_pub.publish(self.phi_cur)
-                # self.phases[1] = self.phi_cur.data.copy()
+                self.phases[1] = self.phi_cur.data.copy()
+                self.info(f"Time to calculate: {time.time()-beginning}")
  
                 # self.info(f"target_r_new: {target_r_new}")
                 # self.info(f"target_v_new: {target_v_new}")
@@ -230,7 +233,6 @@ class Encirclement(Node):
            poses topic to send through the external position
            to the crazyflie 
         """
-
         if not self.has_initial_pose:      
             for pose in msg.poses:
                 if pose.name == self.robot:
@@ -239,7 +241,7 @@ class Encirclement(Node):
                     self.initial_pose[2] = pose.pose.position.z      
             self.has_initial_pose = True    
             
-        elif self.land_flag != True:
+        elif not self.land_flag :
             for pose in msg.poses:
                 if pose.name == self.robot:
                     self.agents_r[0] = pose.pose.position.x
@@ -247,6 +249,9 @@ class Encirclement(Node):
                     self.agents_r[2] = pose.pose.position.z
                     quat = [pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w]
                     self.Ca_b[:,:] = R.from_quat(quat).as_matrix()
+                    # self.agents_v[0] = pose.velocity.linear.x
+                    # self.agents_v[1] = pose.velocity.linear.y
+                    # self.agents_v[2] = pose.velocity.linear.z
         elif self.has_final == False and self.land_flag == True:
             self.has_final = True
             self.final_pose = np.zeros(3)
@@ -258,6 +263,17 @@ class Encirclement(Node):
                     self.final_pose[2] = pose.pose.position.z
             self.r_landing[0,:] += self.final_pose[0]*np.ones(len(self.t_landing))
             self.r_landing[1,:] += self.final_pose[1]*np.ones(len(self.t_landing))
+        # else:
+        #     for pose in msg.poses:
+        #         if pose.name == self.robot:
+        #             self.agents_r[0] = pose.pose.position.x
+        #             self.agents_r[1] = pose.pose.position.y
+        #             self.agents_r[2] = pose.pose.position.z
+        #             quat = [pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w]
+        #             self.Ca_b[:,:] = R.from_quat(quat).as_matrix()
+        #             self.agents_v[0] = pose.velocity.linear.x
+        #             self.agents_v[1] = pose.velocity.linear.y
+        #             self.agents_v[2] = pose.velocity.linear.z
 
     def _phase_callback(self, msg):
         self.phases = msg.data
