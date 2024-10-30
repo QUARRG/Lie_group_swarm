@@ -2,15 +2,16 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 import quaternion
 import math
-from utils2 import R3_so3
+from crazy_encirclementutils2 import R3_so3
 from scipy.linalg import expm
 from icecream import ic
 class Embedding():
-    def __init__(self,r,phi_dot,k_phi,tactic,n_agents,initial_pos,dt):
+    def __init__(self,r,phi_dot,k_phi,tactic,n_agents,initial_pos,hover_height,dt):
         self.phi_dot = phi_dot
         self.r = r
         self.k_phi = k_phi
         self.tactic = tactic
+        self.hover_height = hover_height
         self.n = n_agents
         self.dt = dt
         self.initial_phase = np.zeros(self.n)
@@ -47,7 +48,7 @@ class Embedding():
 
         for i in range(self.n):
             # Circle position
-            pos = np.array([agent_r[0, i], agent_r[1, i], agent_r[2, i]])
+            pos = np.array([agent_r[0, i], agent_r[1, i], agent_r[2, i]-self.hover_height])
             #Rot = self.tactic_parameters(phi_i)
             #self.Rot[:,:,i] = self.Rot[:,:,i]@expm(R3_so3(v_d_hat.reshape(-1,1))*self.dt)
             pos_rot = np.linalg.inv(self.Rot[:,:,i])@pos.T
@@ -136,7 +137,7 @@ class Embedding():
 
             target_r[0, i] = pos_d[0]
             target_r[1, i] = pos_d[1]
-            target_r[2, i] = pos_d[2]
+            target_r[2, i] = pos_d[2] + self.hover_height
 
             # if self.tactic == 'circle':
             #     target_r[2,i] = 0.5
