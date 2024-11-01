@@ -2,7 +2,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 import quaternion
 import math
-from crazy_encirclementutils2 import R3_so3
+from crazy_encirclement.utils2 import R3_so3
 from scipy.linalg import expm
 from icecream import ic
 class Embedding():
@@ -15,11 +15,15 @@ class Embedding():
         self.n = n_agents
         self.dt = dt
         self.initial_phase = np.zeros(self.n)
+        self.scale = 0.3*self.phi_dot #scale the distortion around the x axis
         self.Rot = np.zeros((3,3,self.n))
         self.pass_zero = np.zeros(self.n)
         self.pass_ref = np.zeros(self.n)
+        self.Rot_des = np.zeros((3,3,self.n))
+        self.Rot_act = np.zeros((3,3,self.n))
         for i in range(self.n):
-            self.Rot[:,:,i] = np.eye(3)
+            self.Rot_des[:,:,i] = np.eye(3)
+            self.Rot_act[:,:,i] = np.eye(3)
             self.initial_phase[i] = np.arctan2(initial_pos[1,i],initial_pos[0,i])
             self.pass_ref[i] = False
             self.pass_zero[i] = False
@@ -28,22 +32,13 @@ class Embedding():
         self.wd = np.zeros(self.n)
         self.T = 24
         self.t = np.arange(0,self.T, self.dt)
-
+        self.target_r = initial_pos
+        self.target_v = np.zeros((3, self.n))
        
     def targets(self,agent_r,phi_prev):
 
-        target_r = np.zeros((3, self.n))
-        target_v = np.zeros((3, self.n))
         phi_cur = np.zeros(self.n)
         unit = np.zeros((self.n, 3))
-        if self.n >1:
-            n_diff = int(np.math.factorial(self.n) / (math.factorial(2) * math.factorial(self.n-2)))
-        else:
-            n_diff = 1
-        phi_diff = np.zeros(n_diff)
-        distances = np.zeros(n_diff)
-        unit = np.zeros((self.n, 3))
-
         pos_circle = np.zeros((3, self.n))
 
         for i in range(self.n):
@@ -51,8 +46,16 @@ class Embedding():
             pos = np.array([agent_r[0, i], agent_r[1, i], agent_r[2, i]-self.hover_height])
             #Rot = self.tactic_parameters(phi_i)
             #self.Rot[:,:,i] = self.Rot[:,:,i]@expm(R3_so3(v_d_hat.reshape(-1,1))*self.dt)
-            pos_rot = np.linalg.inv(self.Rot[:,:,i])@pos.T
+            pos_rot = np.linalg.inv(self.Rot_des[:,:,i])@pos.T
             phi, _ = self.cart2pol(pos_rot)
+            if phi > 0 and phi < np.pi:
+                phi_dot_x = self.scale*np.cos(phi)*np.sin(phi)
+            else:
+                phi_dot_x = self.scale*np.cos(phi)*np.sin(phi)
+            v_d_hat_x = np.array([-phi_dot_x, 0, 0])
+            Rot_x = expm(R3_so3(v_d_hat_x.reshape(-1,1))*self.dt)
+            self.Rot_act[:,:,i] = self.Rot_des[:,:,i].copy()#Rot_x@self.Rot_act[:,:,i]
+
             pos_x = pos_rot[0]
             pos_y = pos_rot[1]
             #pos_x, pos_y, _ = pos_rot.parts[1:]  # Ignoring the scalar part
@@ -80,13 +83,14 @@ class Embedding():
                 wd = self.phi_dot
                 phi_i = phi_cur[0]
 
-            # ic(np.rad2deg(phi_i))
-            # input()
             phi_dot_x = 0
-            phi_dot_x = self.phi_dot*np.cos(phi_i)*np.sin(phi_i)
+            if phi_i > 0 and phi_i < np.pi:
+                phi_dot_x = self.scale*np.cos(phi_i)*np.sin(phi_i)
+            else:
+                phi_dot_x = self.scale*np.cos(phi_i)*np.sin(phi_i)
             v_d_hat_x = np.array([-phi_dot_x, 0, 0])
             Rot_x = expm(R3_so3(v_d_hat_x.reshape(-1,1))*self.dt)
-            phi_dot_y = 0
+            phi_dot_y = 0*self.phi_dot*np.cos(phi_i)**2*np.sin(phi_i)
             v_d_hat_y = np.array([0, -phi_dot_y, 0])
             Rot_y = expm(R3_so3(v_d_hat_y.reshape(-1,1))*self.dt)
             v_d_hat_z = np.array([0, 0, -wd])
@@ -94,64 +98,32 @@ class Embedding():
             if not self.pass_zero[i]:
                 self.pass_zero[i] = phi_i > phi_prev[i]
 
-            #self.pass_ref[i] = phi_i < self.initial_phase[i]
-            # if self.pass_ref[i]:
-                # ic(self.pass_ref[i])
-                # ic(self.pass_zero[i])
-                #input()
-            # if (self.pass_zero[i]) and (self.pass_ref[i]):             
-            #     ic('reset')
-            #     ic(phi_i, phi_prev[i])
-            #     ic(j)
-            #     self.pass_zero[i] = False
-            #     self.pass_ref[i] = False
-            #     # self.count += 1
-            #     ic(Rot_x)
-            #     self.Rot[:,:,i] = Rot_x
-            #     self.pass_zero[i] = False
-            # if (phi_i) > (phi_prev[i]):
-            #     #ic('reset')
-            #     #self.cont += 1
-            #     #ic(Rot_x)
-            #     self.Rot[:,:,i] = Rot_x
             # else:
             if self.pass_zero[i]:
-                self.Rot[:,:,i] = Rot_x@self.Rot[:,:,i]
+                self.Rot_des[:,:,i] = Rot_x@self.Rot_act[:,:,i]
             else:
-                self.Rot[:,:,i] = np.eye(3)
-            Rot = self.Rot[:,:,i]#@Rot_y@Rot_z
+                self.Rot_des[:,:,i] = np.eye(3)
+            Rot = self.Rot_des[:,:,i]#@Rot_y@Rot_z
 
-            v_d = self.Rot[:,:,i]@v_d_hat_z.T
-            # v_d = Rot@v_d_hat_z.T
-            #v_x, v_y, v_z = v_d.parts[1:]
-            v = np.cross(v_d.T, agent_r[:, i])
-            target_v[0, i] = v[0]
-            target_v[1, i] = v[1]
-            target_v[2, i] = v[2]
 
             x = self.r * np.cos(phi_i)
             y = self.r * np.sin(phi_i)
             pos_d_hat = np.array([x, y, 0])
             pos_d = Rot@Rot_z@pos_d_hat.T
-            # pos_d = Rot@pos_d_hat.T
 
-            target_r[0, i] = pos_d[0]
-            target_r[1, i] = pos_d[1]
-            target_r[2, i] = pos_d[2] + self.hover_height
+            target_r_prev = self.target_r[:, i].copy()
+            self.target_r[0, i] = pos_d[0]
+            self.target_r[1, i] = pos_d[1]
+            self.target_r[2, i] = pos_d[2] + self.hover_height
+            self.target_r[2, i] = np.clip(self.target_r[2, i], 0.2, 1.5)
+
+            self.target_v[:, i] = (self.target_r[:, i] - target_r_prev)/self.dt
 
             # if self.tactic == 'circle':
             #     target_r[2,i] = 0.5
-            unit[i, :] = [np.cos(phi_i), np.sin(phi_i), 0]
 
-        k = 0
-        for i in range(self.n):
-            for j in range(i+1, self.n):
-                distances[k] = np.linalg.norm(target_r[:, i] - target_r[:, j])
-                phi_diff[k] = np.arccos(np.dot(unit[i,:],unit[j,:]))
-                k += 1
-    
             
-        return phi_cur, target_r, target_v, phi_diff, distances
+        return phi_cur, self.target_r, self.target_v
     
 
     def phi_dot_desired(self,phi_i, phi_j, phi_k, phi_dot_des, k):

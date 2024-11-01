@@ -7,11 +7,11 @@ from scipy.spatial.transform import Rotation as R
 from utils import generate_reference
 from icecream import ic
 
-N = 5000
-r = 0.4
+N = 8000
+r = 1
 k_phi = 5
 kx = 15
-kv = 2.5*np.sqrt(2)
+kv = 20.5*np.sqrt(2)
 n_agents = 1
 phi_dot = 0.5
 dt = 0.01
@@ -39,9 +39,11 @@ f_T_r = np.zeros((n_agents,N))
 angles = np.zeros((3,n_agents,N))
 Wr_r = np.zeros((3,n_agents,N))
 
-agents_r[:, 0, 0] = np.array([r*np.cos(0),r*np.sin(0),0]).T
+agents_r[:, 0, 0] = 2*np.array([r*np.cos(0),r*np.sin(0),0.6]).T
 # agents_r[:, 1, 0] = np.array([r*np.cos(np.deg2rad(120)),r*np.sin(np.deg2rad(120)),0.6]).T
 # agents_r[:, 2, 0] = np.array([r*np.cos(np.deg2rad(-120)),r*np.sin(np.deg2rad(-120)) ,0.6]).T
+
+ra_r[:,:,0] = agents_r[:,:,0]
 for i in range(n_agents):
     phi_cur[i,0] = np.mod(np.arctan2(agents_r[1,i,0],agents_r[0,i,0]),2*np.pi)
 
@@ -70,40 +72,26 @@ for i in range(N-1):
     # f_T_r[:,i] = f_T_r_new
     # angles[:,:,i] = angles_new
     # Wr_r[:,:,i] = Wr_r_new
-
     phi_new, target_r_new, target_v_new, phi_diff_new, distances_new = embedding.targets(agents_r[:,:,i],phi_cur[:,i])
     phi_cur[:,i+1] = phi_new
     phi_dot_cur[:,i] = (phi_cur[:,i+1] - phi_cur[:,i])/dt
-    ra_r[:,:,i+1] = target_r_new
-    va_r[:,:,i+1] = target_v_new
-    va_r_dot[:,:,i+1] = (va_r[:,:,i+1] - va_r[:,:,i])/dt
-    if i >0:
-        va_r[:,:,i] = (ra_r[:,:,i+1] - ra_r[:,:,i])/dt
+    ra_r[:,:,i+1] = target_r_new#*np.random.uniform(0.9,1.1)
+    #va_r[:,:,i+1] = target_v_new
+
+    va_r[:,:,i+1] = ((ra_r[:,:,i+1] - ra_r[:,:,i])/dt)#*np.random.uniform(0.9,1.1)
     phi_diff[:,i] = phi_diff_new
     distances[:,i] = distances_new
     #agents_r[:,:,i+1] = target_r_new
-    accels[:,:,i] = kx*(ra_r[:,:,i+1] - agents_r[:,:,i]) + kv*(va_r[:,:,i+1] - agents_v[:,:,i])
+    accels[:,:,i] = kv*(va_r[:,:,i+1] - agents_v[:,:,i]) # + kx*(ra_r[:,:,i+1] - agents_r[:,:,i]) + 
     agents_v[:,:,i+1] = agents_v[:,:,i] + accels[:,:,i]*dt
     agents_r[:,:,i+1] = agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2
+
     #agents_r[2,:,i+1] += 0.6
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 legends = []
 for agent in range(n_agents):
-    ax.plot3D(ra_r[0,agent,1:-1], ra_r[1,agent,1:-1], ra_r[2,agent,1:-1])
-    legends.append(f"Agent {agent+1}")
-ax.legend(legends)
-ax.set_xlabel('X Axis')
-ax.set_ylabel('Y Axis')
-ax.set_zlabel('Z Axis')
-# plt.savefig("3_agents_SO3.png")
-# plt.close()
-plt.show()
-
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-for agent in range(1):
     ax.plot3D(ra_r[0,agent,1:-1], ra_r[1,agent,1:-1], ra_r[2,agent,1:-1])
     legends.append(f"Agent {agent+1}")
 ax.legend(legends)
