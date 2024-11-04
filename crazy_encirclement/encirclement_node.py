@@ -258,6 +258,7 @@ class Encirclement(Node):
         time.sleep(2.0)
 
     def next_point(self,r,v,v_dot,Wr_r_new=np.zeros(3),quat_new=np.array([0,0,0,1])):
+        self.info(f"debug {r}, {v}, {v_dot}, {Wr_r_new}, {quat_new}")
         msg = FullState()
         msg.pose.position.x = float(r[0])
         msg.pose.position.y = float(r[1])

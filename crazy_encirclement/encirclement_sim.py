@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import math
 from scipy.spatial.transform import Rotation as R
-from utils import generate_reference
+from utils import R3_so3, so3_R3
 from icecream import ic
+import pandas as pd
 
 N = 2000
 r = 1
@@ -16,8 +17,18 @@ n_agents = 1
 phi_dot = 0.5
 dt = 0.01
 
+mb = 0.04
+g = 9.81
+I3 = np.array([0,0,1]).T.reshape(3)
+w_r = 0 #reference yaw
+ca_1 = np.array([np.cos(w_r),np.sin(w_r),0]).T #auxiliar vector 
+Ca_r = np.zeros((3,3,n_agents,N))
+Ca_r[:,:,0,0] = np.eye(3)
+quat = np.zeros((4,n_agents,N))
+
 ra_r = np.zeros((3,n_agents,N))
 va_r = np.zeros((3,n_agents,N))
+va_r_dot = np.zeros((3,n_agents,N))
 accels = np.zeros((3,n_agents,N))
 phi_cur = np.zeros((n_agents, N))
 phi_dot_cur = np.zeros((n_agents, N))
@@ -49,42 +60,45 @@ for i in range(n_agents):
 
 embedding = Embedding(r, phi_dot,k_phi, 'dumbbell',n_agents,agents_r[:,:,0],dt)
 
-
-# for i in range(10):
-#     phi_new, target_r_new, target_v_new, _,phi_diff_new, distances_new = embedding.targets(agents_r[:,:,0],agents_v[:,:,0], phi_cur[:,0])
-
-    # Wr_r_new, f_T_r_new, angles_new,_, Ca_r_new = generate_reference(va_r_dot[:,:,0],Ca_r[:,:,:,0],Ca_b[:,:,:,0],va_r[:,:,0],dt)
-    # Ca_r[:,:,:,0] = Ca_r_new
-    # if i >0:
-    #     va_r_dot[:,:,i] = (va_r[:,:,i] - va_r[:,:,i-1])/dt
-
-# Ca_r[:,:,:,0] = Ca_r_new
-
-# ra_r[:,:,0] = target_r_new
-
-# va_r[:,:,0] = target_v_new
-# phi_cur[:,0] = phi_new
-
 for i in range(N-1):
     print("percentage: ", float(i/N))
-    # Wr_r_new, f_T_r_new, angles_new,_, Ca_r_new = generate_reference(va_r_dot[:,:,i],Ca_r[:,:,:,i],Ca_b[:,:,:,i],va_r[:,:,i],dt)
-    # Ca_r[:,:,:,i+1] = Ca_r_new
-    # f_T_r[:,i] = f_T_r_new
-    # angles[:,:,i] = angles_new
-    # Wr_r[:,:,i] = Wr_r_new
+
     phi_new, target_r_new, target_v_new, phi_diff_new, distances_new = embedding.targets(agents_r[:,:,i],phi_cur[:,i])
     phi_cur[:,i+1] = phi_new
     phi_dot_cur[:,i] = (phi_cur[:,i+1] - phi_cur[:,i])/dt
-    ra_r[:,:,i+1] = target_r_new*np.random.uniform(0.99,1.01)
-    va_r[:,:,i+1] = target_v_new*np.random.uniform(0.99,1.01)
+    ra_r[:,:,i+1] = target_r_new#*np.random.uniform(0.99,1.01)
+    va_r[:,:,i+1] = target_v_new#*np.random.uniform(0.99,1.01)
 
     #va_r[:,:,i+1] = ((ra_r[:,:,i+1] - ra_r[:,:,i])/dt)*np.random.uniform(0.8,1.2)
+    va_r_dot[:,:,i] = (va_r[:,:,i+1] - va_r[:,:,i])/dt
     phi_diff[:,i] = phi_diff_new
     distances[:,i] = distances_new
+
+    fa_r = mb*va_r_dot +mb*g*I3 #+ Ca_r@D@Ca_r.T@va_r
+    #f_T_r = self.I3.T@self.Ca_r.T@fa_r
+    if np.linalg.norm(fa_r) != 0:
+        r3 = fa_r.reshape(3,1)/np.linalg.norm(fa_r)
+    else:
+        r3 = np.zeros((3,1))
+
+    aux = R3_so3(r3)@ca_1
+    if np.linalg.norm(aux) != 0:
+        r2 = aux.reshape(3,1)/np.linalg.norm(aux)
+    else:
+        r2 = np.zeros((3,1))
+
+    r1 = (R3_so3(r2)@r3).reshape(3,1);
+    Ca_r_new = np.hstack((r1, r2, r3))
+    if np.linalg.norm(r3) != 0:
+        Wr_r = so3_R3(np.linalg.inv(Ca_r[:,:,i])@Ca_r_new)/dt
+    else:
+        Wr_r = np.zeros((3,1))
+    Ca_r[:,:,i+1] = Ca_r_new
+    quat[:,:,i] = R.from_matrix(Ca_r_new).as_quat()
     #agents_r[:,:,i+1] = target_r_new
-    accels[:,:,i] =  kx*(ra_r[:,:,i+1] - agents_r[:,:,i]) + kv*(va_r[:,:,i+1] - agents_v[:,:,i]) # +
-    agents_v[:,:,i+1] = agents_v[:,:,i] + accels[:,:,i]*dt
-    agents_r[:,:,i+1] = agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2
+    # accels[:,:,i] =  kx*(ra_r[:,:,i+1] - agents_r[:,:,i]) + kv*(va_r[:,:,i+1] - agents_v[:,:,i]) # +
+    # agents_v[:,:,i+1] = agents_v[:,:,i] + accels[:,:,i]*dt *np.random.uniform(0.1,1.1)
+    # agents_r[:,:,i+1] = agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2*np.random.uniform(0.1,1.1)
 
     #agents_r[2,:,i+1] += 0.6
 
