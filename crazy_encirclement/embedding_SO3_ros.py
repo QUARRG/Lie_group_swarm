@@ -6,15 +6,15 @@ from crazy_encirclement.utils2 import R3_so3
 from scipy.linalg import expm
 from icecream import ic
 class Embedding():
-    def __init__(self,r,phi_dot,k_phi,tactic,n_agents,initial_pos,hover_height,dt):
+    def __init__(self,r,phi_dot,k_phi,tactic,n_agents,initial_pos,hover_height,dt,multiplier):
         self.phi_dot = phi_dot
         self.r = r
         self.k_phi = k_phi
         self.tactic = tactic
         self.hover_height = hover_height
         self.n = n_agents
-        self.dt = dt
-        self.scale = 50*self.phi_dot #scale the distortion around the x axis
+        self.dt = multiplier*dt
+        self.scale = (100/multiplier)*self.phi_dot #scale the distortion around the x axis
         self.Rot = np.zeros((3,3))
         self.pass_zero = False
         self.pass_ref = False

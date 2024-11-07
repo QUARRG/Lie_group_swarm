@@ -78,8 +78,10 @@ def parse_yaml(context):
             parameters= server_params,
             prefix=PythonExpression(['"xterm -e gdb -ex run --args" if ', LaunchConfiguration('debug'), ' else ""']),
         ))
+    robots_list = []
     for robot in crazyflies['robots']:
         if crazyflies['robots'][robot]['enabled']:
+            robots_list.append(robot)
             # Nodes.append(Node(
             #     package='crazy_encirclement',
             #     executable='crazy_circle',
@@ -94,6 +96,13 @@ def parse_yaml(context):
                 output='screen',
                 parameters=[{'robot_prefix': robot}]
             ))
+    # Nodes.append(Node(
+    #     package='crazy_encirclement',
+    #     executable='agents_order',
+    #     name='agents_order',
+    #     output='screen',
+    #     parameters= [{'robot_data': robots_list}]
+    # ))
 
     return Nodes
 

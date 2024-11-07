@@ -69,7 +69,10 @@ class Circle_distortion(Node):
         # self.initial_pose = self.agents_r.copy()
         self.i_landing = 0
         self.i_takeoff = 0
-        self.phases = 0
+        if self.n_agents > 1:
+            self.phases = None
+        else:
+            self.phases = 0
         self.phi_cur = Float32()
         
         self.create_subscription(
@@ -104,14 +107,16 @@ class Circle_distortion(Node):
             self._poses_changed, qos_profile
         )
         
-        # self.create_subscription(
-        #     Float32MultiArray,
-        #     '/'+self.robot+'/phases',
-        #     self._phase_callback,
-        #     10)
-        
-        # while not self.has_order:
-        #     rclpy.spin_once(self, timeout_sec=0.1)
+
+        if self.n_agents > 1:
+            self.create_subscription(
+                Float32MultiArray,
+                '/'+self.robot+'/phases',
+                self._phase_callback,
+                10)
+            while not self.phases:
+                rclpy.spin_once(self, timeout_sec=0.1)
+                
         while (not self.has_initial_pose):
             rclpy.spin_once(self, timeout_sec=0.1)
 
@@ -130,7 +135,7 @@ class Circle_distortion(Node):
         self.kv = 2.5*np.sqrt(2)
 
         self.timer_period = 0.01
-        self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents,self.initial_pose,self.hover_height,4*self.timer_period)
+        self.embedding = Embedding(self.r, self.phi_dot,self.k_phi, self.tactic,self.n_agents,self.initial_pose,self.hover_height,self.timer_period,4)
         # while (not self.has_initial_pose):
         #     rclpy.spin_once(self, timeout_sec=0.1)
         self.landing_traj(4)
@@ -175,10 +180,10 @@ class Circle_distortion(Node):
                 
                 self.phi_cur.data = float(phi)
                 self.phase_pub.publish(self.phi_cur)
-                # if self.n_agents > 1:
-                #     self.phases[1] = phi
-                # else:
-                self.phases = phi
+                if self.n_agents > 1:
+                    self.phases[1] = phi
+                else:
+                    self.phases = phi
                 #self.info(f"agents_r: {target_r}, {self.agents_r}, agents_v: {target_v}, {self.agents_v}")
                 #accels = self.kx*(target_r - self.agents_r) + self.kv*(target_v - self.agents_v)
                 #accels = (target_v - self.agents_v)/self.timer_period
