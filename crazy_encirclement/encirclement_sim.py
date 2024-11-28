@@ -65,7 +65,7 @@ for i in range(n_agents):
 embedding = Embedding(r, phi_dot,k_phi, 'dumbbell',n_agents,agents_r[:,:,0],dt)
 
 for i in range(N-1):
-    print("percentage: ", float(i/N))
+    #print("percentage: ", float(i/N))
 
     phi_new, target_r_new, target_v_new, phi_diff_new, distances_new,debug = embedding.targets(agents_r[:,:,i],i)
 
