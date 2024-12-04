@@ -62,19 +62,8 @@ class Embedding():
             # pos = np.array([agent_r[0, i] - self.phi_dot*np.cos(phi_prev[i])*np.sin(phi_prev[i]), agent_r[1, i] - self.r*np.cos(phi_prev[i])**2, agent_r[2, i]-0.6])
             pos = np.array([agent_r[0, i] , agent_r[1, i] , agent_r[2, i]-0.6])
 
-            #Rot = self.tactic_parameters(phi_i)
-            #self.Rot[:,:,i] = self.Rot[:,:,i]@expm(R3_so3(v_d_hat.reshape(-1,1))*self.dt)
-            phi_x = np.mod(np.arctan2(pos[2], pos[1]),np.pi)
-            # ic(np.rad2deg(phi_x))
-            # ic(pos)
-            # input()
-            self.Rot_act[:,:,i] = np.array([
-                [1, 0, 0],
-                [0, np.cos(phi_x), -np.sin(phi_x)],
-                [0, np.sin(phi_x), np.cos(phi_x)]
-            ])
             pos_rot = self.Rot_des[:,:,i].T@pos.T
-            phi, _ = self.cart2pol(pos_rot)
+            phi, _, _ = self.cart2pol(pos_rot)
             # phi_dot_x = self.calc_wx(phi)#*(phi-self.phi_des[i])
             # phi_dot_y = self.calc_wy(phi)
             # v_d_hat_x = np.array([-phi_dot_x, -phi_dot_y, 0])
@@ -118,46 +107,23 @@ class Embedding():
             Rot_z = expm(R3_so3(v_d_hat_z.reshape(-1,1))*self.dt)
             pos_d_hat = np.array([x, y, 0])
             pos_d_hat = Rot_z@pos_d_hat
-            phi_d, _ = self.cart2pol(pos_d_hat)
+            phi_d, _, phi_d_raw = self.cart2pol(pos_d_hat)
 
-            phi_dot_x = self.calc_wx(phi_d)#*(phi_d-self.phi_des[i])
-            phi_dot_y = self.calc_wy(phi_d) #phi_i-phi_prev[i]*
-            v_d_hat_x = np.array([-phi_dot_x, -phi_dot_y, 0])
-            
-            Rot_x = expm(R3_so3(v_d_hat_x.reshape(-1,1)))
-            # ic(np.rad2deg(np.linalg.norm(v_d_hat_x)))
+            phi_dot_x = self.calc_wx(phi_d_raw)#*(phi_d-self.phi_des[i])
+            phi_dot_y = self.calc_wy(phi_d_raw) #phi_i-phi_prev[i]*
+            v_d_hat_x_y = np.array([-phi_dot_x, -phi_dot_y, 0])
+            # ic(np.rad2deg(np.linalg.norm(v_d_hat_x_y)))
             # input()
-            #input()
-            
-            v_d_hat_y = np.array([0, -phi_dot_y, 0])
-            Rot_y = expm(R3_so3(v_d_hat_y.reshape(-1,1)))
+            # ic(i,phi_d,v_d_hat_x_y)
+            # input()
+            Rot_x = expm(R3_so3(v_d_hat_x_y.reshape(-1,1)))
+     
 
-            # if ((self.phi_des[i]) <0.01) and (np.abs((2*np.pi)-phi_d) <0.01) and (wd > 0):
-            #     self.Rot_act[:,:,i] = np.eye(3)
-            #     self.Rot_des[:,:,i] = np.eye(3)
-            #     self.pass_zero[i] = True
-                # ic(self.phi_des[i],phi_d)
-            #self.Rot_des[:,:,i] = Rot_x@Rot_y@self.Rot_act[:,:,i].copy()
-            if self.pass_zero[i]:
-                self.Rot_des[:,:,i] = Rot_x#@self.Rot_act[:,:,i].copy()
-            else:
-                self.Rot_des[:,:,i] = np.eye(3)
-            self.Rot_des[:,:,i] = Rot_x
             Rot = Rot_x#self.Rot_des[:,:,i]#@Rot_y@Rot_z
-            # ic(np.rad2deg(np.arccos(Rot[1,1])))
-            # if (((np.pi)-self.phi_des[i]) <0) and (((np.pi)-phi_d) >0):# and (wd > 0):
-            #     # self.Rot_act[:,:,i] = np.eye(3)
-            #     # self.Rot_des[:,:,i] = np.eye(3)
-            #     self.pass_zero[i] = True
-                #ic(self.phi_des[i],phi_d)
 
-            #     ic(self.phi_des[i],phi_d)
             pos_d = Rot@pos_d_hat
             # if i == 1 and not self.pass_ref[i]:
-            phi_x_des = np.mod(np.arctan2(pos_d[2], pos_d[1]),np.pi)
-            # ic(np.rad2deg(phi_x_des))
-            # ic(pos_d)
-            
+
             #pos_d = (self.Rot_des[:,:,0].T@pos_d)
             target_r[0, i] = pos_d[0] #+ self.phi_dot*np.cos(phi_i)*np.sin(phi_i)
             target_r[1, i] = pos_d[1] #+ self.r*np.cos(phi_i)**2
@@ -165,7 +131,7 @@ class Embedding():
             # if self.tactic == 'circle':
             #     target_r[2,i] = 0.5
             unit[i, :] = [np.cos(phi_d), np.sin(phi_d), 0]
-            self.timer += 1
+
             self.phi_des[i] = phi_d
         # with warnings.catch_warnings(record=True) as w:
         #     warnings.simplefilter("always")  # Ensure all warnings are captured
@@ -183,11 +149,11 @@ class Embedding():
     
 
     def calc_wx(self,phi):
-        return self.scale*(np.sin(phi)*np.cos(phi)-np.sin(phi)**3)
+        return self.scale*(np.sin(phi)*np.cos(phi)+np.sqrt(np.abs(phi))/(2*np.pi))
         #return self.scale*np.cos(phi)*np.sin(phi)
     
     def calc_wy(self,phi):
-        return self.scale*np.sin(-phi)*np.cos(phi)**2
+        return self.scale*np.exp(-np.abs(phi))*np.cos(phi)
 
     def phi_dot_desired(self,phi_i, phi_j, phi_k, phi_dot_des, k,i):
 
@@ -200,10 +166,10 @@ class Embedding():
         pos_x = pos_rot[0]
         pos_y = pos_rot[1]
         #pos_x, pos_y, _ = pos_rot.parts[1:]
-        phi = np.arctan2(pos_y, pos_x)
-        phi = np.mod(phi, 2*np.pi)
+        phi_raw = np.arctan2(pos_y, pos_x)
+        phi = np.mod(phi_raw, 2*np.pi)
         r = np.linalg.norm([pos_x, pos_y])
-        return phi, r
+        return phi, r, phi_raw
 
 
     # Quaternion multiplication function (can be skipped if using numpy.quaternion)

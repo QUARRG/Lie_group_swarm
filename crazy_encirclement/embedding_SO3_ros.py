@@ -13,7 +13,7 @@ class Embedding():
         self.tactic = tactic
         self.hover_height = hover_height
         self.n = n_agents
-        self.dt = multiplier*dt
+        self.dt = dt
         self.scale = self.phi_dot #scale the distortion around the x axis
         self.Rot = np.zeros((3,3))
         self.pass_zero = False
@@ -39,16 +39,7 @@ class Embedding():
         
         pos_rot = np.linalg.inv(self.Rot_des)@pos.T
         phi_i, _ = self.cart2pol(pos_rot)
-        # if phi > 0 and phi < np.pi:
-        #     phi_dot_x = self.scale*self.phi_dot*np.cos(phi)*np.sin(phi)
-        # else:
-        #     phi_dot_x = self.scale**np.cos(phi)*np.sin(phi)
-        # v_d_hat_x = np.array([-phi_dot_x, 0, 0])
-        # Rot_x = expm(R3_so3(v_d_hat_x.reshape(-1,1))*self.dt)
-        # self.Rot_act[:,:,i] = self.Rot_des[:,:,i].copy()#Rot_x@self.Rot_act[:,:,i]
 
-        pos_x = pos_rot[0]
-        pos_y = pos_rot[1]
         #pos_x, pos_y, _ = pos_rot.parts[1:]  # Ignoring the scalar part
 
             
@@ -77,11 +68,7 @@ class Embedding():
         self.target_r[1] = pos_d[1]
         self.target_r[2] = pos_d[2] + self.hover_height
         self.target_r[2] = np.clip(self.target_r[2],0.15,1.5)
-        self.target_v = (self.target_r - target_r_old)/(self.dt/2)
-
-        # if self.tactic == 'circle':
-        #     target_r[2,i] = 0.5
-
+        self.target_v = (self.target_r - target_r_old)/(self.dt)
 
             
         return phi_i, self.target_r, self.target_v, phi_i

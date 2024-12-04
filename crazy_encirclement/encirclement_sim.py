@@ -16,7 +16,7 @@ r = 1
 k_phi = 10
 kx = 20
 kv = 1.5*np.sqrt(2)
-n_agents = 3
+n_agents = 2
 phi_dot = 0.5#np.deg2rad(35)
 dt = 0.01
 save = False
@@ -54,9 +54,9 @@ f_T_r = np.zeros((n_agents,N))
 angles = np.zeros((3,n_agents,N))
 Wr_r = np.zeros((3,n_agents,N))
 
-agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(0.5)),r*np.sin(np.deg2rad(0.5)),0.6]).T
+agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(0)),r*np.sin(np.deg2rad(0)),0.6]).T
 agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(10)),r*np.sin(np.deg2rad(10)),0.6]).T
-agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(20)),r*np.sin(np.deg2rad(20)) ,0.6]).T
+# agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(120)),r*np.sin(np.deg2rad(120)) ,0.6]).T
 # agents_r[:, 3, 0] = 1.*np.array([r*np.cos(np.deg2rad(290)),r*np.sin(np.deg2rad(290)) ,0.6]).T
 
 ra_r[:,:,0] = agents_r[:,:,0]
