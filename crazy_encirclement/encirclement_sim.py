@@ -15,7 +15,7 @@ N = 2000
 r = 1
 k_phi = 10
 kx = 20
-kv = 6.5*np.sqrt(2)
+kv = 1.5*np.sqrt(2)
 n_agents = 3
 phi_dot = 0.5#np.deg2rad(35)
 dt = 0.01
@@ -54,9 +54,9 @@ f_T_r = np.zeros((n_agents,N))
 angles = np.zeros((3,n_agents,N))
 Wr_r = np.zeros((3,n_agents,N))
 
-agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(30)),r*np.sin(np.deg2rad(30)),0.6]).T
-agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(110)),r*np.sin(np.deg2rad(110)),0.6]).T
-agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(240)),r*np.sin(np.deg2rad(240)) ,0.6]).T
+agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(0.5)),r*np.sin(np.deg2rad(0.5)),0.6]).T
+agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(10)),r*np.sin(np.deg2rad(10)),0.6]).T
+agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(20)),r*np.sin(np.deg2rad(20)) ,0.6]).T
 # agents_r[:, 3, 0] = 1.*np.array([r*np.cos(np.deg2rad(290)),r*np.sin(np.deg2rad(290)) ,0.6]).T
 
 ra_r[:,:,0] = agents_r[:,:,0]
@@ -66,7 +66,7 @@ for i in range(n_agents):
 embedding = Embedding(r, phi_dot,k_phi, 'dumbbell',n_agents,agents_r[:,:,0],dt)
 
 for i in range(0,N-1):
-    print("percentage: ", float(i/N))
+    #print("percentage: ", float(i/N))
 
     phi_new, target_r_new, target_v_new, phi_diff_new, distances_new,debug = embedding.targets(agents_r[:,:,i],i)
 
@@ -84,8 +84,8 @@ for i in range(0,N-1):
 
 
     accels[:,:,i] =  kx*(ra_r[:,:,i+1] - agents_r[:,:,i]) + kv*(va_r[:,:,i+1] - agents_v[:,:,i]) # +
-    agents_v[:,:,i+1] = agents_v[:,:,i] + accels[:,:,i]*dt #*np.random.uniform(0.2,1.2)
-    agents_r[:,:,i+1] = agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2#*np.random.uniform(0.2,1.2)
+    agents_v[:,:,i+1] = agents_v[:,:,i] + accels[:,:,i]*dt *np.random.uniform(0.2,1.2)
+    agents_r[:,:,i+1] = (agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2)*np.random.uniform(0.99,1.01)
     #agents_r[:,:,i+1] = target_r_new
 
 figures_dir = "figures/"
@@ -107,6 +107,7 @@ ax.legend()#, bbox_to_anchor=(1.05, 0.5), loc='center left', borderaxespad=0.)
 ax.set_xlabel('X Axis')
 ax.set_ylabel('Y Axis')
 ax.set_zlabel('Z Axis')
+# ax.set_zlim(0.59,0.61)
 #ax.view_init(elev=90, azim=-90)
 
 if save:
