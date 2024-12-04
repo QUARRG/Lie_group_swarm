@@ -67,7 +67,7 @@ class Embedding():
             
             pos_rot = self.Rot_des[:,:,i].T@pos.T
             phi, _ = self.cart2pol(pos_rot)
-            phi_dot_x = np.cos(phi)*np.sin(phi)
+            phi_dot_x = self.calc_wx(phi)
 
             v_d_hat_x = np.array([-phi_dot_x, 0, 0])
             Rot_x = expm(R3_so3(v_d_hat_x.reshape(-1,1))*self.dt)
@@ -112,7 +112,7 @@ class Embedding():
             pos_d_hat = Rot_z@pos_d_hat
             phi_d, _ = self.cart2pol(pos_d_hat)
 
-            phi_dot_x = np.cos(phi_d)*np.sin(phi_d)#*(phi_i-self.phi_new[i])
+            phi_dot_x = self.calc_wx(phi_d)#*(phi_i-self.phi_new[i])
             phi_dot_y = 0*self.scale*np.cos(phi_d)**2*np.sin(phi_d) #phi_i-phi_prev[i]*
             v_d_hat_x = np.array([-phi_dot_x, 0, 0])
             
@@ -133,7 +133,7 @@ class Embedding():
             if ((self.phi_des[i]) <0.01) and (np.abs((2*np.pi)-phi_d) <0.01) and (wd > 0):
                 self.Rot_act[:,:,i] = np.eye(3)
                 self.Rot_des[:,:,i] = np.eye(3)
-                #ic(self.phi_des[i],phi_d)
+                ic(self.phi_des[i],phi_d)
             pos_d = Rot@pos_d_hat
             # if i == 1 and not self.pass_ref[i]:
 
@@ -160,6 +160,12 @@ class Embedding():
             
         return  self.phi_cur,target_r, target_v, phi_diff, distances, debug
     
+
+    def calc_wx(self,phi):
+        return self.scale*(np.sin(phi)*np.cos(phi)-np.sin(phi)**3)
+    
+    def calc_wy(self,phi):
+        return self.scale*np.cos(phi)
 
     def phi_dot_desired(self,phi_i, phi_j, phi_k, phi_dot_des, k,i):
 

@@ -11,12 +11,12 @@ from icecream import ic
 import pandas as pd
 import os
 
-N = 4000
+N = 2000
 r = 1
-k_phi = 6
+k_phi = 10
 kx = 20
 kv = 6.5*np.sqrt(2)
-n_agents = 4
+n_agents = 3
 phi_dot = 0.5#np.deg2rad(35)
 dt = 0.01
 save = False
@@ -57,7 +57,7 @@ Wr_r = np.zeros((3,n_agents,N))
 agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(30)),r*np.sin(np.deg2rad(30)),0.6]).T
 agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(110)),r*np.sin(np.deg2rad(110)),0.6]).T
 agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(240)),r*np.sin(np.deg2rad(240)) ,0.6]).T
-agents_r[:, 3, 0] = 1.*np.array([r*np.cos(np.deg2rad(290)),r*np.sin(np.deg2rad(290)) ,0.6]).T
+# agents_r[:, 3, 0] = 1.*np.array([r*np.cos(np.deg2rad(290)),r*np.sin(np.deg2rad(290)) ,0.6]).T
 
 ra_r[:,:,0] = agents_r[:,:,0]
 for i in range(n_agents):
