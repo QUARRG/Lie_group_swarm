@@ -2,8 +2,8 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 import warnings
 import math
-from utils2 import R3_so3
-from scipy.linalg import expm
+from utils2 import R3_so3, so3_R3
+from scipy.linalg import expm, logm
 from icecream import ic
 #the rotation is counterclockwise #################################
 class Embedding():
@@ -17,9 +17,10 @@ class Embedding():
         self.initial_phase = np.zeros(self.n)
         self.Rot_des = np.zeros((3,3,self.n))
         self.Rot_act = np.zeros((3,3,self.n))
-        self.scale = self.phi_dot #scale the distortion around the x axis
+        self.scale = 0*self.phi_dot #scale the distortion around the x axis
         self.pass_zero = np.zeros(self.n)
         self.pass_ref = np.zeros(self.n)
+        self.Sep_des = R.from_euler('z', 120, degrees=True).as_matrix()
         self.count = 0
         for i in range(self.n):
             self.Rot_des[:,:,i] = np.eye(3)
@@ -156,10 +157,16 @@ class Embedding():
         return self.scale*np.exp(-np.abs(phi))*np.cos(phi)
 
     def phi_dot_desired(self,phi_i, phi_j, phi_k, phi_dot_des, k,i):
-
         phi_ki = np.mod(phi_i - phi_k, 2*np.pi)
         phi_ij = np.mod(phi_j - phi_i, 2*np.pi)
-        return (3 * phi_dot_des + k * (phi_ki - phi_ij)) / 3
+        R_ij = R.from_euler('z', phi_ij, degrees=False).as_matrix()
+        R_ki = R.from_euler('z', phi_ki, degrees=False).as_matrix()
+        w_pos = so3_R3(logm(R_ij.T) + logm(self.Sep_des))[2]*self.dt
+        w_neg = so3_R3(logm(R_ki.T) - logm(self.Sep_des))[2]*self.dt
+
+        phi_dot_des = 100*(np.linalg.norm(w_pos) + np.linalg.norm(w_neg)) + self.phi_dot
+
+        return phi_dot_des #(3 * phi_dot_des + k * (phi_ki - phi_ij)) / 3
 
 
     def cart2pol(self,pos_rot):

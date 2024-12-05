@@ -47,9 +47,9 @@ def R3_so3(w):
 
     return so3
 
-def so3_R3(Rot):
+def so3_R3(log_R):
 
-    log_R = logm(Rot)
+    #log_R = logm(Rot)
     w1 = log_R[2,1]
     w2 = log_R[0,2]
     w3 = log_R[1,0]
