@@ -50,8 +50,8 @@ class Embedding():
             phi_ki = np.mod(phi_i - phi_k, 2*np.pi)
             phi_ij = np.mod(phi_i - phi_j, 2*np.pi)
             # R_ji = R_i.T@R_j
-            R_ij = R_j.T@R_i
-            R_ki = R_i.T@R_k
+            R_ij = (R_j.T@R_i).T
+            R_ki = (R_i.T@R_k).T
             self.Log_sep_des_j[:,:,i] = logm(R_ij)
             self.Log_sep_des_k[:,:,i] = logm(R_ki)
             self.sep_des_j[:,:,i] = R_ij
@@ -195,23 +195,24 @@ class Embedding():
         R_i = R.from_euler('z', phi_i, degrees=False).as_matrix()
         R_j = R.from_euler('z', phi_j, degrees=False).as_matrix()
         R_k = R.from_euler('z', phi_k, degrees=False).as_matrix()
-        # R_ji = R_i.T@R_j
-        R_ij = R_j.T@R_i
+        R_ji = R_i.T@R_j
+        # R_ij = R_j.T@R_i
         R_ki = R_i.T@R_k
         # R_ij = R.from_euler('z', phi_ij, degrees=False).as_matrix()
         # R_ki = R.from_euler('z', phi_ki, degrees=False).as_matrix()
-        w_pos = so3_R3(logm(R_ij.T) + self.log_sep_des_leg)[2]*self.dt
-        w_neg = so3_R3(logm(R_ki.T) + self.log_sep_des_leg)[2]*self.dt
-        w_diff_ij = so3_R3(logm(R_ij.T))[2]*self.dt
-        w_diff_ki = so3_R3(logm(R_ki.T))[2]*self.dt
-        # ic(i,w_neg)
+        w_pos = so3_R3(logm(R_ji.T) + self.Log_sep_des_j[:,:,i])[2]*self.dt
+        w_neg = so3_R3(logm(R_ki.T) + self.Log_sep_des_k[:,:,i])[2]*self.dt
+        w_diff_ij = so3_R3(logm(R_ji.T))[2]#*self.dt
+        w_diff_ki = so3_R3(logm(R_ki.T))[2]#*self.dt
+        # ic(i,w_neg,w_pos)
+        # input()
         # ic(R.from_matrix(R_ji).as_euler('zyx', degrees=True)[0],R.from_matrix(self.sep_des_j[:,:,i]).as_euler('zyx', degrees=True)[0])
         # # input()
         # ic(R.from_matrix(R_ki).as_euler('zyx', degrees=True)[0],R.from_matrix(self.sep_des_k[:,:,i]).as_euler('zyx', degrees=True)[0])
         # input()
         # ic(-logm(R_ji) , self.Log_sep_des_j[:,:,i])
         # ic(logm(R_ki.T) , self.Log_sep_des_k[:,:,i])
-        phi_dot_des = self.phi_dot + 1*(w_neg.real + w_pos.real) + np.clip(0.5/(w_diff_ij.real) - 0.5/(w_diff_ki.real),-0.5,0.5)
+        phi_dot_des = self.phi_dot + 1000*(w_neg.real - w_pos.real) #+ np.clip(0.5/(w_diff_ij.real) - 0.5/(w_diff_ki.real),-0.5,0.5)
 
         return phi_dot_des #(3 * phi_dot_des + k * (phi_ki - phi_ij)) / 3
 

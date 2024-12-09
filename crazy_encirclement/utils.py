@@ -63,5 +63,5 @@ def so3_R3(Rot):
     w2 = log_R[0,2]
     w3 = log_R[1,0]
     w = np.array([w1,w2,w3]).T
-    return w
+    return np.mod(w,2*np.pi)
 
