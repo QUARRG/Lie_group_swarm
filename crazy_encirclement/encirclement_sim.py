@@ -12,7 +12,7 @@ import pandas as pd
 import os
 import pickle
 
-N =3000
+N =4000
 r = 1
 k_phi = 10
 kx = 20
@@ -91,9 +91,12 @@ for i in range(0,N-1):
 
 
     accels[:,:,i] =  kx*(ra_r[:,:,i+1] - agents_r[:,:,i]) + kv*(va_r[:,:,i+1] - agents_v[:,:,i]) # +
-    agents_v[:,:,i+1] =( agents_v[:,:,i] + accels[:,:,i]*dt) #*np.random.uniform(0.99,1.01)
-    agents_r[:,:,i+1] = (agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2)#*np.random.uniform(0.99,1.01)
+    agents_v[:,:,i+1] =( agents_v[:,:,i] + accels[:,:,i]*dt)*np.random.uniform(0.99,1.01)
+    agents_r[:,:,i+1] = (agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2)*np.random.uniform(0.99,1.01)
     # agents_r[:,:,i+1] = target_r_new
+#saving data to a pickle file
+with open ('positions_new_controller.pkl','wb') as f:
+    pickle.dump(agents_r,f)
 
 figures_dir = "figures/"
 os.makedirs(figures_dir, exist_ok=True)
