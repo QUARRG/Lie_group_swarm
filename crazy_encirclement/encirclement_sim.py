@@ -20,7 +20,7 @@ kv = 6.5*np.sqrt(2)
 n_agents = 3
 phi_dot = 0.6#np.deg2rad(35)
 dt = 0.1
-save = True
+save = False
 
 mb = 0.04
 g = 9.81

@@ -160,8 +160,8 @@ class Embedding():
 
         w_diff_ji = so3_R3(logm(R_ji.T))[2]
         w_diff_ki = so3_R3(logm(R_ki.T))[2]
-        if w_diff_ij == 0:
-            w_diff_ij = 0.00001
+        if w_diff_ji == 0:
+            w_diff_ji = 0.00001
         if w_diff_ki == 0:
             w_diff_ki = 0.00001
 
