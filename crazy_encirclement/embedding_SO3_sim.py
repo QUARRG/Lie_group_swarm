@@ -5,7 +5,7 @@ import math
 from utils2 import R3_so3, so3_R3
 from scipy.linalg import expm, logm
 from icecream import ic
-#the rotation is counterclockwise #################################
+#the rotation is clockwise #################################
 class Embedding():
     def __init__(self,r,phi_dot,k_phi,tactic,n_agents,initial_pos,dt):
         self.phi_dot = phi_dot
@@ -155,7 +155,6 @@ class Embedding():
         R_j = R.from_euler('z', phi_j, degrees=False).as_matrix()
         R_k = R.from_euler('z', phi_k, degrees=False).as_matrix()
         R_ji = R_i.T@R_j
-        # R_ij = R_j.T@R_i
         R_ki = R_i.T@R_k
 
         w_diff_ji = so3_R3(logm(R_ji.T))[2]
