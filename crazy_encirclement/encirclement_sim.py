@@ -56,9 +56,9 @@ f_T_r = np.zeros((n_agents,N))
 angles = np.zeros((3,n_agents,N))
 Wr_r = np.zeros((3,n_agents,N))
 
-agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(200)),r*np.sin(np.deg2rad(200)),0.6]).T
-agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(100)),r*np.sin(np.deg2rad(100)),0.6]).T
-agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(10)),r*np.sin(np.deg2rad(10)) ,0.6]).T
+agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(240)),r*np.sin(np.deg2rad(240)),0]).T
+agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(120)),r*np.sin(np.deg2rad(120)),0]).T
+agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(0)),r*np.sin(np.deg2rad(0)) ,0]).T
 # agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(0)),r*np.sin(np.deg2rad(0)),0.6]).T
 # agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(100)),r*np.sin(np.deg2rad(100)),0.6]).T
 # agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(200)),r*np.sin(np.deg2rad(200)) ,0.6]).T
@@ -93,7 +93,7 @@ for i in range(0,N-1):
     accels[:,:,i] =  kx*(ra_r[:,:,i+1] - agents_r[:,:,i]) + kv*(va_r[:,:,i+1] - agents_v[:,:,i]) # +
     agents_v[:,:,i+1] =( agents_v[:,:,i] + accels[:,:,i]*dt)*np.random.uniform(0.99,1.01)
     agents_r[:,:,i+1] = (agents_r[:,:,i] + agents_v[:,:,i]*dt + 0.5*accels[:,:,i]*dt**2)*np.random.uniform(0.99,1.01)
-    # agents_r[:,:,i+1] = target_r_new
+    #agents_r[:,:,i+1] = target_r_new
 #saving data to a pickle file
 with open ('positions_new_controller.pkl','wb') as f:
     pickle.dump(agents_r,f)
@@ -105,7 +105,7 @@ colors = plt.cm.viridis(np.linspace(0, 1, n_agents))
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 legends = []
-for agent in range(1):
+for agent in range(n_agents):
     color = colors[agent]
     ax.plot3D(ra_r[0,agent,0:-1], ra_r[1,agent,0:-1], ra_r[2,agent,0:-1],color=color,label=f"Desired trajectory agent {agent+1}")
     # ax.scatter(agents_r[0,agent,0], agents_r[1,agent,0], agents_r[2,agent,0],color=color,marker='o')

@@ -28,11 +28,16 @@ class Embedding():
             #     self.initial_phase[i] = 2*np.pi
         self.wd = np.zeros(self.n)
         self.T = 24
-        self.t = np.arange(0,self.T, self.dt)
+        self.t = np.zeros(self.n)
+        # phi_diff = 2*np.pi/self.n
+        # for i in range(self.n):
+        #     phi = i*phi_diff
+        #     self.t[i] = phi/self.phi_dot
         self.timer = 1
         self.phi_des = np.zeros(self.n)
         self.phi_cur = np.zeros(self.n)
         self.phi_dot_actual = np.zeros(self.n)
+        self.z = np.zeros(self.n)
 
        
     def targets(self,agent_r,counter):
@@ -53,11 +58,13 @@ class Embedding():
         unit = np.zeros((self.n, 3))
 
         pos_circle = np.zeros((3, self.n))
-
+        
         for i in range(self.n):
+            self.z[i] = self.hover_height*self.t[i]
+
             # Circle position
             # pos = np.array([agent_r[0, i] - self.phi_dot*np.cos(phi_prev[i])*np.sin(phi_prev[i]), agent_r[1, i] - self.r*np.cos(phi_prev[i])**2, agent_r[2, i]-0.6])
-            pos = np.array([agent_r[0, i] , agent_r[1, i] , agent_r[2, i]-self.hover_height])
+            pos = np.array([agent_r[0, i] , agent_r[1, i] , agent_r[2, i]-self.z[i]])
 
             pos_rot = self.Rot_des[:,:,i].T@pos.T
             phi, _, _ = self.cart2pol(pos)
@@ -76,8 +83,10 @@ class Embedding():
             pos_circle[1, i] = pos_y
             unit[i, :] = [np.cos(phi), np.sin(phi), 0]
 
+        self.t += self.dt*np.ones(self.n)
             
         for i in range(self.n):
+            self.z[i] = self.hover_height*self.t[i]
             if self.n > 1:
                 phi_i = self.phi_cur[i]
                 if i == 0:
@@ -118,7 +127,7 @@ class Embedding():
             #pos_d = (self.Rot_des[:,:,0].T@pos_d)
             target_r[0, i] = pos_d[0] #+ self.phi_dot*np.cos(phi_i)*np.sin(phi_i)
             target_r[1, i] = pos_d[1] #+ self.r*np.cos(phi_i)**2
-            target_r[2, i] = pos_d[2] + self.hover_height
+            target_r[2, i] = pos_d[2] + self.z[i]
             # if self.tactic == 'circle':
             #     target_r[2,i] = 0.5
             unit[i, :] = [np.cos(phi_i), np.sin(phi_i), 0]
@@ -135,10 +144,8 @@ class Embedding():
                 distances[k] = np.linalg.norm(target_r[:, i] - target_r[:, j])
                 phi_diff[k] = np.arccos(np.dot(unit[i,:],unit[j,:]))
                 k += 1
-        # if len(w) > 0:
-        #     ic(unit[i,:],unit[j,:],np.dot(unit[i,:],unit[j,:]))
         
-            
+        
         return  self.phi_cur,target_r, target_v, phi_diff, distances, debug
     
 
