@@ -17,7 +17,7 @@ class Embedding():
         self.initial_phase = np.zeros(self.n)
         self.Rot_des = np.zeros((3,3,self.n))
         self.Rot_act = np.zeros((3,3,self.n))
-        self.scale = 0.3 #scale the distortion around the x axis
+        self.scale = 0.4 #scale the distortion around the x axis
         self.hover_height = 0.8
         self.count = 0
         for i in range(self.n):
@@ -60,7 +60,7 @@ class Embedding():
         pos_circle = np.zeros((3, self.n))
         
         for i in range(self.n):
-            self.z[i] = self.hover_height*self.t[i]
+            self.z[i] = self.hover_height
 
             # Circle position
             # pos = np.array([agent_r[0, i] - self.phi_dot*np.cos(phi_prev[i])*np.sin(phi_prev[i]), agent_r[1, i] - self.r*np.cos(phi_prev[i])**2, agent_r[2, i]-0.6])
@@ -86,7 +86,7 @@ class Embedding():
         self.t += self.dt*np.ones(self.n)
             
         for i in range(self.n):
-            self.z[i] = self.hover_height*self.t[i]
+            self.z[i] = self.hover_height
             if self.n > 1:
                 phi_i = self.phi_cur[i]
                 if i == 0:
@@ -154,7 +154,7 @@ class Embedding():
         #return self.scale*np.cos(phi)*np.sin(phi)
     
     def calc_wy(self,phi):
-        return self.scale*np.sin(-phi)*np.cos(phi)**2
+        return self.scale*np.sin(phi)*np.cos(phi)**2
 
     def phi_dot_desired(self,phi_i, phi_j, phi_k, phi_dot_des, k,i):
 

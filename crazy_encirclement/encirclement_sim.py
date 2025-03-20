@@ -2,6 +2,10 @@ from embedding_SO3_sim import Embedding
 import numpy as np
 import matplotlib.pyplot as plt
 plt.rcParams['text.usetex'] = True
+plt.rcParams.update({
+    'font.family': 'Times New Roman',
+    'font.size': 13
+})
 # plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
 from mpl_toolkits.mplot3d import Axes3D
 import math
@@ -12,7 +16,7 @@ import pandas as pd
 import os
 import pickle
 
-N = 200
+N = 100
 r = 1.2
 k_phi = 15
 kx = 5
@@ -56,9 +60,9 @@ f_T_r = np.zeros((n_agents,N))
 angles = np.zeros((3,n_agents,N))
 Wr_r = np.zeros((3,n_agents,N))
 
-agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(240)),r*np.sin(np.deg2rad(240)),0]).T
-agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(120)),r*np.sin(np.deg2rad(120)),0]).T
-agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(0)),r*np.sin(np.deg2rad(0)) ,0]).T
+agents_r[:, 0, 0] = r*np.array([r*np.cos(np.deg2rad(200)),r*np.sin(np.deg2rad(200)),0.6]).T
+agents_r[:, 1, 0] = r*np.array([r*np.cos(np.deg2rad(100)),r*np.sin(np.deg2rad(100)),0.6]).T
+agents_r[:, 2, 0] = r*np.array([r*np.cos(np.deg2rad(10)), r*np.sin(np.deg2rad(10)) ,0.6]).T
 # agents_r[:, 0, 0] = 1*np.array([r*np.cos(np.deg2rad(0)),r*np.sin(np.deg2rad(0)),0.6]).T
 # agents_r[:, 1, 0] = 1*np.array([r*np.cos(np.deg2rad(100)),r*np.sin(np.deg2rad(100)),0.6]).T
 # agents_r[:, 2, 0] = 1.*np.array([r*np.cos(np.deg2rad(200)),r*np.sin(np.deg2rad(200)) ,0.6]).T
@@ -105,15 +109,15 @@ colors = plt.cm.viridis(np.linspace(0, 1, n_agents))
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 legends = []
-for agent in range(n_agents):
+for agent in range(1):
     color = colors[agent]
-    ax.plot3D(ra_r[0,agent,0:-1], ra_r[1,agent,0:-1], ra_r[2,agent,0:-1],color=color,label=f"Desired trajectory agent {agent+1}")
+    ax.plot3D(ra_r[0,agent,0:-1], ra_r[1,agent,0:-1], ra_r[2,agent,0:-1],color=color,label=f"Des Pose agent {agent+1}")
     # ax.scatter(agents_r[0,agent,0], agents_r[1,agent,0], agents_r[2,agent,0],color=color,marker='o')
     # ax.scatter(agents_r[0,agent,-1], agents_r[1,agent,-1], agents_r[2,agent,-1],color='black',marker='o')
-    ax.plot3D(agents_r[0,agent,1:-1], agents_r[1,agent,1:-1], agents_r[2,agent,1:-1],color=color, linestyle='dashed', label=f"Real trajectory agent {agent+1}")
+    ax.plot3D(agents_r[0,agent,1:-1], agents_r[1,agent,1:-1], agents_r[2,agent,1:-1],color=color, linestyle='dashed', label=f"Real Pose {agent+1}")
 
-    #legends.append(f"Real trajectory agent {agent+1}")
-ax.legend()#, bbox_to_anchor=(1.05, 0.5), loc='center left', borderaxespad=0.)
+ax.legend()    #legends.append(f"Real trajectory agent {agent+1}")
+#, bbox_to_anchor=(1.05, 0.5), loc='center left', borderaxespad=0.)
 ax.set_xlabel('X Axis (m)')
 ax.set_ylabel('Y Axis (m)')
 ax.set_zlabel('Z Axis (m)')
@@ -132,11 +136,17 @@ if save:
         (30, 270),  # Side view, right
         (60, 315)   # High angle, front-right
     ]
-    plt.savefig(f"{figures_dir}/3_agents_SO3_default_view.png", bbox_inches='tight', pad_inches=0.1)
+    plt.savefig(f"{figures_dir}/3_agents_SO3_default_view.pdf", bbox_inches='tight', pad_inches=0.1)
     # Save the plot from each perspective
     for j, (elev, azim) in enumerate(angles):
+        if j == 3:
+            ax.legend(loc='lower left')
+            ax.set_zlabel('')
+        else:
+            ax.legend()
+            ax.set_zlabel('Z Axis (m)')
         ax.view_init(elev=elev, azim=azim)  # Set the view
-        plt.savefig(f"{figures_dir}/3_agents_SO3_view_{j+1}.png", bbox_inches='tight', pad_inches=0.1)  # Save with unique filename
+        plt.savefig(f"{figures_dir}/3_agents_SO3_view_{j+1}.pdf", bbox_inches='tight', pad_inches=0.1)  # Save with unique filename
 
     # Show the plot in the last perspective if needed
     #plt.show()
@@ -157,7 +167,7 @@ else:
 # plt.savefig()
 # for i in range(n_agents):
 #     plt.subplot(3,1,1)
-#     plt.title(f"Velocities agent {i+1}")
+#     #plt.title(f"Velocities agent {i+1}")
 #     plt.plot(t[0:-1],va_r[0,i,0:-1])
 #     plt.ylabel("$v_x$ (m/s)")
 #     plt.subplot(3,1,2)
@@ -170,17 +180,17 @@ else:
     
 #     #plt.show()
 #     if save:
-#         plt.savefig(f"{figures_dir}/velocities_agent_{i+1}.png")
+#         plt.savefig(f"{figures_dir}/velocities_agent_{i+1}.pdf")
 #         plt.close()
 #     else:
 #         plt.show()
 
 for i in range(n_agents):
     plt.subplot(3,1,1)
-    plt.title(f"Positions agent {i+1}")
+    #plt.title(f"Positions agent {i+1}")
     plt.plot(t[0:-1],ra_r[0,i,0:-1],color=colors[i])
     plt.plot(t[0:-1],agents_r[0,i,0:-1],linestyle='dashed',color=colors[i])
-    plt.legend([f"Des Pos Agent {i+1}",f"Actual Pos Agent {i+1}"])
+    plt.legend([f"Des Pos {i+1}",f"Actual Pos {i+1}"])
     plt.ylabel("X axis (m)")
     plt.subplot(3,1,2)
     plt.plot(t[0:-1],ra_r[1,i,0:-1],color=colors[i])
@@ -195,7 +205,7 @@ for i in range(n_agents):
     plt.xlabel("Time (s)")
 
     if save:
-        plt.savefig(f"{figures_dir}/positions_agent_{i+1}.png")
+        plt.savefig(f"{figures_dir}/positions_agent_{i+1}.pdf")
         plt.close()
     else:
         plt.show()
@@ -203,40 +213,44 @@ for i in range(n_agents):
     plt.plot(t[0:-1],np.rad2deg(phi_cur[i,0:-1]),label=f"Angle agent {i+1}")
 plt.ylabel("Angles (degrees)")
 plt.xlabel("Time (s)")
-plt.title("Angles of the agents")
+#plt.title("Angles of the agents")
 plt.legend()
 if save:
-    plt.savefig(f"{figures_dir}/angles.png")
-    plt.close()
-else:
-    plt.show()
-for i in range(n_diff):
-    plt.plot(t[0:-1],distances[i,0:-1],label=f"Distance agent {i+1}")
-plt.ylabel("Distances (m)")
-plt.xlabel("Time (s)")
-plt.title("Distances between agents")
-plt.legend()
-if save:
-    plt.savefig(f"{figures_dir}/distances.png")
+    plt.savefig(f"{figures_dir}/angles.pdf")
     plt.close()
 else:
     plt.show()
 
-for i in range(n_diff):
-    plt.plot(t[0:-1],np.rad2deg(phi_diff[i,0:-1]),label=f"Phase difference agent {i+1}")
-plt.title("Phase differences between agents")
+plt.plot(t[0:-1],distances[0,0:-1],label=f"Distance agents 1-2")
+plt.plot(t[0:-1],distances[1,0:-1],label=f"Distance agents 1-3")
+plt.plot(t[0:-1],distances[2,0:-1],label=f"Distance agents 2-3")
+plt.ylabel("Distances (m)")
+plt.xlabel("Time (s)")
+#plt.title("Distances between agents")
+plt.legend()
+if save:
+    plt.savefig(f"{figures_dir}/distances.pdf")
+    plt.close()
+else:
+    plt.show()
+
+
+plt.plot(t[0:-1],np.rad2deg(phi_diff[0,0:-1]),label=f"Phase Diff agent 1-2")
+plt.plot(t[0:-1],np.rad2deg(phi_diff[1,0:-1]),label=f"Phase Diff agent 1-3")
+plt.plot(t[0:-1],np.rad2deg(phi_diff[2,0:-1]),label=f"Phase Diff agent 2-3")
+#plt.title("Phase differences between agents")
 plt.ylabel("$\phi$ (degrees)")
 plt.xlabel("Time (s)")
 plt.legend()
 if save:
-    plt.savefig(f"{figures_dir}/phase_diff.png")
+    plt.savefig(f"{figures_dir}/phase_diff.pdf")
     plt.close()
 else:
     plt.show()
 
 for agent in range(n_agents):
     plt.subplot(3,1,1)
-    plt.title(f"Positions x, y, and z errors of all the agents")
+    #plt.title(f"Positions x, y, and z errors of all the agents")
     plt.ylabel(f"$e_x$ (m)")
     plt.plot(t[0:-1],ra_r[0,agent,0:-1]-agents_r[0,agent,0:-1],label=f"agent {agent+1}")
     plt.subplot(3,1,2)
@@ -257,7 +271,7 @@ plt.legend()
 
     
 if save:
-    plt.savefig(f"{figures_dir}/error_agent.png")
+    plt.savefig(f"{figures_dir}/error_agent.pdf")
     plt.close()
 else:
     plt.show()
