@@ -33,7 +33,7 @@ class Circle_distortion(Node):
         self.robot = self.get_parameter('robot').value
         self.n_agents  = int(self.get_parameter('number_of_agents').value)
         self.r  = float(self.get_parameter('r').value)
-        self.k_phi  = 10#float(self.get_parameter('k_phi').value)
+        self.k_phi  = 5#float(self.get_parameter('k_phi').value)
         self.phi_dot  = float(self.get_parameter('phi_dot').value)
         self.initial_phase = 0
         self.reboot_client = self.create_client(Empty, self.robot + '/reboot')
