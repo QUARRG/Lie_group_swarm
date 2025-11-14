@@ -7,11 +7,7 @@ from std_msgs.msg import Bool
 from rclpy.duration import Duration
 from crazy_encirclement.embedding_SO3_ros import Embedding
 from std_srvs.srv import Empty
-from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32MultiArray, Float32
-from geometry_msgs.msg import Pose, Twist, PoseStamped
-from crazy_encirclement.utils2 import  trajectory, R3_so3, so3_R3
-from scipy.linalg import expm, logm
 import time
 import numpy as np
 from scipy.spatial.transform import Rotation as R
@@ -278,7 +274,6 @@ class Circle_distortion(Node):
         msg.x = float(r[0])
         msg.y = float(r[1])
         msg.z = float(r[2])
-
         self.position_pub.publish(msg)
 
 def main():
